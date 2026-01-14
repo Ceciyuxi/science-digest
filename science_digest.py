@@ -1,0 +1,1214 @@
+#!/usr/bin/env python3
+"""
+Science Digest - Daily Natural Sciences News Aggregator
+
+Fetches top articles from FREE, publicly accessible science news sources,
+categorizes them by scientific domain (Astronomy, Biology, Climate), and
+generates simple explanations at a 7th grade reading level.
+
+Only uses open access sources - no paywalled content from Nature, Science, etc.
+"""
+
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+import os
+import sys
+import webbrowser
+import time
+import re
+
+# Configuration
+OUTPUT_FILE = "science_digest.html"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+}
+
+# Domains/URLs known to have paywalls - always skip these
+PAYWALLED_DOMAINS = [
+    "nature.com",
+    "science.org",
+    "sciencemag.org",
+    "nytimes.com",
+    "washingtonpost.com",
+    "wsj.com",
+    "nationalgeographic.com",  # Often has subscription walls
+    "newscientist.com",
+    "scientificamerican.com",
+    "theatlantic.com",
+    "wired.com",
+]
+
+# Paywall indicators in page content
+PAYWALL_INDICATORS = [
+    "subscribe to read",
+    "subscription required",
+    "premium content",
+    "members only",
+    "sign in to read",
+    "create an account to continue",
+    "free trial",
+    "unlock this article",
+    "paywall",
+    "subscriber-only",
+    "paid content",
+    "register to continue reading",
+    "already a subscriber",
+    "become a member",
+]
+
+# Domain classification keywords
+DOMAIN_KEYWORDS = {
+    "Astronomy": [
+        "space", "planet", "star", "galaxy", "moon", "mars", "nasa", "asteroid",
+        "comet", "telescope", "orbit", "solar", "cosmic", "universe", "black hole",
+        "supernova", "nebula", "spacecraft", "rocket", "satellite", "exoplanet",
+        "astronomy", "astronaut", "celestial", "meteor", "jupiter", "saturn",
+        "venus", "mercury", "neptune", "uranus", "milky way", "hubble", "webb",
+        "iss", "international space station", "launch", "mission", "lunar"
+    ],
+    "Biology": [
+        "animal", "species", "cell", "dna", "gene", "evolution", "fossil",
+        "dinosaur", "bacteria", "virus", "protein", "organism", "ecosystem",
+        "wildlife", "plant", "insect", "mammal", "bird", "fish", "marine",
+        "ocean life", "biodiversity", "extinction", "endangered", "habitat",
+        "genetics", "mutation", "enzyme", "microbe", "biology", "life form",
+        "creature", "predator", "prey", "reproduction", "anatomy", "brain",
+        "neuron", "disease", "infection", "immune", "coral", "reef", "forest"
+    ],
+    "Climate": [
+        "climate", "weather", "temperature", "warming", "carbon", "emission",
+        "greenhouse", "ice", "glacier", "arctic", "antarctic", "sea level",
+        "drought", "flood", "hurricane", "storm", "atmosphere", "pollution",
+        "renewable", "energy", "fossil fuel", "ocean warming", "heat wave",
+        "wildfire", "deforestation", "methane", "ozone", "el nino", "la nina",
+        "precipitation", "rainfall", "snowfall", "permafrost", "ecosystem change",
+        "environmental", "sustainability", "conservation", "earth", "global"
+    ]
+}
+
+# FREE, open access URLs organized by domain
+# These sources provide full articles without paywalls
+DOMAIN_URLS = {
+    "Astronomy": [
+        # ScienceDaily - completely free
+        "https://www.sciencedaily.com/news/space_time/",
+        "https://www.sciencedaily.com/news/space_time/astronomy/",
+        # Phys.org - free science news
+        "https://phys.org/space-news/",
+        "https://phys.org/space-news/astronomy/",
+        # EurekAlert - free press releases from research institutions
+        "https://www.eurekalert.org/news-releases/browse/subject/space",
+        # Space.com - mostly free
+        "https://www.space.com/science",
+        # NASA - government, always free
+        "https://www.nasa.gov/news/all-news/",
+    ],
+    "Biology": [
+        # ScienceDaily - completely free
+        "https://www.sciencedaily.com/news/plants_animals/",
+        "https://www.sciencedaily.com/news/plants_animals/biology/",
+        # Phys.org - free science news
+        "https://phys.org/biology-news/",
+        "https://phys.org/biology-news/ecology/",
+        # EurekAlert - free press releases
+        "https://www.eurekalert.org/news-releases/browse/subject/biology",
+        # Live Science - mostly free
+        "https://www.livescience.com/animals",
+    ],
+    "Climate": [
+        # ScienceDaily - completely free
+        "https://www.sciencedaily.com/news/earth_climate/",
+        "https://www.sciencedaily.com/news/earth_climate/climate/",
+        # Phys.org - free science news
+        "https://phys.org/earth-news/",
+        "https://phys.org/earth-news/climate-change/",
+        # EurekAlert - free press releases
+        "https://www.eurekalert.org/news-releases/browse/subject/environment",
+        # NOAA - government, always free
+        "https://www.noaa.gov/news-release",
+    ]
+}
+
+
+def is_paywalled_url(url):
+    """Check if a URL is from a known paywalled domain."""
+    url_lower = url.lower()
+    for domain in PAYWALLED_DOMAINS:
+        if domain in url_lower:
+            return True
+    return False
+
+
+def check_for_paywall(soup, url):
+    """Check if page content indicates a paywall."""
+    # First check URL
+    if is_paywalled_url(url):
+        return True
+
+    # Check page text for paywall indicators
+    page_text = soup.get_text().lower()
+    for indicator in PAYWALL_INDICATORS:
+        if indicator in page_text:
+            # Look for paywall elements near the indicator
+            paywall_elements = soup.select('[class*="paywall"], [class*="subscribe"], [class*="premium"], [id*="paywall"]')
+            if paywall_elements:
+                return True
+
+    # Check for common paywall class names
+    paywall_selectors = [
+        '[class*="paywall"]',
+        '[class*="subscriber-only"]',
+        '[class*="premium-content"]',
+        '[class*="locked-content"]',
+        '[data-paywall]',
+        '.subscription-required',
+    ]
+
+    for selector in paywall_selectors:
+        if soup.select(selector):
+            return True
+
+    return False
+
+
+def classify_domain(title, summary):
+    """Classify an article into a scientific domain based on keywords."""
+    text = (title + " " + summary).lower()
+
+    scores = {}
+    for domain, keywords in DOMAIN_KEYWORDS.items():
+        score = sum(1 for kw in keywords if kw in text)
+        scores[domain] = score
+
+    # Return domain with highest score, or None if no matches
+    if max(scores.values()) > 0:
+        return max(scores, key=scores.get)
+    return None
+
+
+def simplify_text(text):
+    """Simplify text to approximately 7th grade reading level."""
+    # Remove complex punctuation and clean up
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    # Simple word replacements for common scientific terms
+    replacements = {
+        "approximately": "about",
+        "utilize": "use",
+        "demonstrate": "show",
+        "investigate": "study",
+        "significant": "important",
+        "subsequently": "then",
+        "preliminary": "early",
+        "hypothesis": "idea",
+        "methodology": "method",
+        "phenomenon": "event",
+        "unprecedented": "never seen before",
+        "substantial": "large",
+        "consequently": "so",
+        "furthermore": "also",
+        "nevertheless": "but",
+        "comprehensive": "complete",
+        "fundamental": "basic",
+        "facilitate": "help",
+        "implement": "use",
+        "indicate": "show",
+        "sufficient": "enough",
+        "obtain": "get",
+        "require": "need",
+        "maintain": "keep",
+        "establish": "set up",
+        "additional": "more",
+        "numerous": "many",
+        "attempt": "try",
+        "commence": "start",
+        "terminate": "end",
+        "endeavor": "try",
+        "ascertain": "find out",
+        "constitute": "make up",
+        "regarding": "about",
+        "prior to": "before",
+        "in addition to": "besides",
+        "in order to": "to",
+        "due to the fact that": "because",
+        "at this point in time": "now",
+        "in the event that": "if",
+    }
+
+    for complex_word, simple_word in replacements.items():
+        pattern = re.compile(re.escape(complex_word), re.IGNORECASE)
+        text = pattern.sub(simple_word, text)
+
+    return text
+
+
+def fetch_article_content(url):
+    """Fetch the main content from an article page, checking for paywalls."""
+    # Skip known paywalled domains
+    if is_paywalled_url(url):
+        return ""
+
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=15)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Check for paywall
+        if check_for_paywall(soup, url):
+            return ""
+
+        # Remove unwanted elements
+        for elem in soup.select("script, style, nav, header, footer, aside, .ad, .advertisement"):
+            elem.decompose()
+
+        # Try to find main article content
+        content = ""
+
+        # Common article content selectors
+        selectors = [
+            "article p",
+            ".article-body p",
+            ".post-content p",
+            ".entry-content p",
+            ".story-body p",
+            ".article-content p",
+            "#text p",  # ScienceDaily
+            ".article__body p",
+            "main p",
+            ".content p"
+        ]
+
+        for selector in selectors:
+            paragraphs = soup.select(selector)
+            if paragraphs:
+                # Get more paragraphs for better content extraction
+                content = " ".join(p.get_text(strip=True) for p in paragraphs[:8])
+                if len(content) > 300:
+                    break
+
+        # Fallback: get any paragraphs
+        if len(content) < 300:
+            paragraphs = soup.find_all("p")
+            # Filter out very short paragraphs (likely navigation/ads)
+            good_paragraphs = [p for p in paragraphs if len(p.get_text(strip=True)) > 50]
+            content = " ".join(p.get_text(strip=True) for p in good_paragraphs[:8])
+
+        return content[:2500]  # Get more content for better explanations
+
+    except Exception:
+        return ""
+
+
+def is_similar_to_title(sentence, title):
+    """Check if a sentence is too similar to the title (likely a repetition)."""
+    sent_words = set(re.findall(r'\b\w{4,}\b', sentence.lower()))
+    title_words = set(re.findall(r'\b\w{4,}\b', title.lower()))
+
+    if not sent_words or not title_words:
+        return False
+
+    overlap = len(sent_words & title_words)
+    similarity = overlap / min(len(sent_words), len(title_words))
+
+    return similarity > 0.6
+
+
+def remove_quotes(text):
+    """Remove direct quotes and attribution phrases from text."""
+    # Remove text inside various quote styles (complete quoted sections)
+    text = re.sub(r'"[^"]{5,300}"', '', text)  # Regular quotes
+    text = re.sub(r'"[^"]{5,300}"', '', text)  # Smart quotes
+
+    # Remove common attribution phrases
+    text = re.sub(r',?\s*said\s+[\w\s\.]+$', '', text, flags=re.IGNORECASE)
+    text = re.sub(r',?\s*says\s+[\w\s\.]+$', '', text, flags=re.IGNORECASE)
+    text = re.sub(r',?\s*according to\s+[\w\s\.]+$', '', text, flags=re.IGNORECASE)
+
+    # Clean up extra whitespace and punctuation
+    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'\s*,\s*,+', ',', text)
+    text = re.sub(r'\.{2,}', '.', text)
+    text = re.sub(r'^\s*[,;:\s]+', '', text)
+    text = re.sub(r'[,;:\s]+$', '', text)
+    text = re.sub(r'\s+([.,;:!?])', r'\1', text)
+
+    return text.strip()
+
+
+def fix_punctuation(sentence):
+    """Fix common punctuation and grammar issues in a sentence."""
+    if not sentence:
+        return ""
+
+    sentence = sentence.strip()
+
+    # Remove leading punctuation
+    sentence = re.sub(r'^[,;:\s]+', '', sentence)
+
+    # Fix common abbreviations
+    sentence = re.sub(r'\bU\.\s*S\.', 'U.S.', sentence)
+
+    # Capitalize first letter
+    if sentence and sentence[0].islower():
+        sentence = sentence[0].upper() + sentence[1:]
+
+    # Fix spacing around punctuation
+    sentence = re.sub(r'\s+([.,;:!?])', r'\1', sentence)
+    sentence = re.sub(r'([.,;:!?])([A-Za-z])', r'\1 \2', sentence)
+
+    # Fix multiple periods and spaces
+    sentence = re.sub(r'\.{2,}', '.', sentence)
+    sentence = re.sub(r'\s+', ' ', sentence)
+
+    # Ensure sentence ends with proper punctuation
+    sentence = sentence.strip()
+    if sentence and sentence[-1] not in '.!?':
+        sentence += '.'
+
+    # Fix bad endings
+    sentence = re.sub(r',\.$', '.', sentence)
+
+    return sentence.strip()
+
+
+def generate_simple_explanation(title, summary, full_content=""):
+    """Generate 2-3 clear bullet points explaining the article at 7th grade level."""
+
+    # Combine all available text
+    all_text = f"{summary} {full_content}".strip()
+
+    # Apply simplifications
+    all_text = simplify_text(all_text)
+
+    # Split into sentences - use a simple split that preserves sentence boundaries
+    sentences = []
+    for part in re.split(r'(?<=[.!?])\s+(?=[A-Z])', all_text):
+        part = part.strip()
+        if len(part) > 50:
+            sentences.append(part)
+
+    # Remove sentences similar to title
+    title_simplified = simplify_text(title)
+    filtered = []
+    for sent in sentences:
+        if not is_similar_to_title(sent, title_simplified):
+            filtered.append(sent)
+    sentences = filtered
+
+    # Clean up sentences - remove quotes, names, organizations, dates
+    clean_sentences = []
+    for sent in sentences:
+        # Remove quoted text (various quote styles)
+        sent = re.sub(r'"[^"]*"', '', sent)
+        sent = re.sub(r'"[^"]*"', '', sent)
+        sent = re.sub(r'"[^"]*$', '', sent)
+
+        # Remove scientist names and titles
+        sent = re.sub(r'\b(Dr\.|Prof\.|Professor)\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)?', 'researchers', sent)
+        sent = re.sub(r'\b[A-Z][a-z]+\s+(and\s+)?(colleagues|co-authors|team)', 'researchers', sent)
+        sent = re.sub(r'\b[A-Z][a-z]+\s+(explains?|notes?|says?|adds?)\b', 'Researchers say', sent)
+
+        # Remove single researcher names before verbs (e.g., "Lin shared", "Hansen noted")
+        sent = re.sub(r'\b[A-Z][a-z]{2,15}\s+(shared|presented|described|reported|argued|proposed|suggested|published|found|showed)\b', 'Researchers \\1', sent)
+        sent = re.sub(r'\b[A-Z][a-z]{2,15}\s+and\s+(his|her|their)\s+', 'Researchers and their ', sent)
+
+        # Remove partial names before common words (e.g., "Subo researchers")
+        sent = re.sub(r'\b[A-Z][a-z]{2,10}\s+(researchers|scientists|team)\b', '\\1', sent)
+
+        # Remove specific researcher names (capitalized words followed by common patterns)
+        sent = re.sub(r',?\s*[A-Z][a-z]+\s+[A-Z][a-z]+,?\s*(a |the )?(lead |co-)?author[^,\.]*[,\.]?', '', sent)
+        sent = re.sub(r'\b(lead |co-)?author\s+[A-Z][a-z]+\s+[A-Z][a-z]+', 'researchers', sent)
+
+        # Remove organization names
+        sent = re.sub(r'\b(University|Institute|College|Center|Centre)\s+of\s+[A-Z][\w\s,]+', 'a research institution', sent)
+        sent = re.sub(r'\b[A-Z][a-z]+\s+(University|Institute|College|State)\b', 'a research institution', sent)
+        sent = re.sub(r'\bETH\s+Zurich\b', 'researchers', sent)
+        sent = re.sub(r'\b(NASA|NOAA|NSF|NIH|ESA)\b', 'scientists', sent)
+        sent = re.sub(r'\b(Swiss Federal Institute|National Research Council)[^,\.]*', 'a research institution', sent)
+        sent = re.sub(r'\bVrije Universiteit\s+\w+', 'a research institution', sent)
+
+        # Remove parenthetical abbreviations like (WSL), (MIT), (UCLA)
+        sent = re.sub(r'\s*\([A-Z]{2,6}\)', '', sent)
+
+        # Remove conference/meeting names
+        sent = re.sub(r"\bAGU's?\s+\d{4}\s+Annual\s+Meeting[^,\.]*", '', sent)
+        sent = re.sub(r'\bat\s+AGU\d*\b', '', sent)
+        sent = re.sub(r'\bin\s+[A-Z][a-z]+,?\s+[A-Z][a-z]+\s*$', '', sent)  # "in New Orleans, Louisiana"
+
+        # Remove journal names and publication info
+        sent = re.sub(r'\b(published|appears?|reported)\s+(in|on)\s+(the\s+)?(AGU\s+)?journal\s+[A-Z][\w\s]+', 'published', sent)
+        sent = re.sub(r'\bin\s+the\s+(AGU\s+)?journal\s+[A-Z][\w\s&]+', '', sent)
+        sent = re.sub(r'\bthe\s+AGU\s+journal\s+[A-Z][\w\s]+', '', sent)
+        sent = re.sub(r'\b(Science|Nature|PNAS|Cell)\s+(Advances|Communications|Reports)?', 'a scientific journal', sent)
+        sent = re.sub(r'\bGeophysical Research Letters\b', '', sent)
+
+        # Remove dates
+        sent = re.sub(r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}', '', sent)
+        sent = re.sub(r'\bon\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}', '', sent)
+        sent = re.sub(r'\b\d{4}\s+(study|research|paper|report)', 'new research', sent)
+        sent = re.sub(r'\bDecember\s+\d+\s+at\s+AGU\d+', '', sent)
+        sent = re.sub(r'\bIn\s+\d{4},\s*', '', sent)  # "In 2014, ..."
+        sent = re.sub(r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}\b', '', sent)  # Just month + day
+        sent = re.sub(r'\bpublished\s+(on\s+)?(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}', 'published', sent)
+
+        # Remove journal names - more comprehensive
+        sent = re.sub(r'\bin\s+the\s+Proceedings\s+of\s+[^,\.]+', '', sent)
+        sent = re.sub(r'\bProceedings\s+of\s+the\s+National\s+Academy\s+of\s+Sciences\b', '', sent)
+        sent = re.sub(r'\(cf\.[^)]+\)', '', sent)  # Remove "(cf.Journal Name)"
+        sent = re.sub(r'\bcf\.\s*[A-Z][a-zA-Z\s]+', '', sent)  # Remove "cf. Journal Name"
+
+        # Remove astronomical catalog names
+        sent = re.sub(r'\bRM\s+J[\d\.\+]+', 'the cluster', sent)
+        sent = re.sub(r'\b[A-Z]{1,3}\s+J?\d{4,}[\d\.\+\-]+', 'the object', sent)
+
+        # Remove "ETH" before researchers
+        sent = re.sub(r'\bETH\s+researchers\b', 'researchers', sent)
+        sent = re.sub(r'\bthe\s+researchers-led\s+team\b', 'the research team', sent)
+
+        # Remove section headers that appear mid-sentence
+        sent = re.sub(r'\b[A-Z][a-z]+(\s+[A-Z][a-z]+){1,4}\s+(?=[A-Z][a-z]+\s+(study|research|team|scientists|researchers|found|shows?))', '', sent)
+        sent = re.sub(r'^[A-Z][a-z]+(\s+[a-z]+){0,3}\s+[A-Z]', lambda m: m.group(0) if len(m.group(0)) > 50 else '', sent)
+        # Remove section headers followed by "The" (common pattern)
+        sent = re.sub(r'^[A-Z][a-z]+(\s+[a-z]+){0,6}\s+The\s+', 'The ', sent)
+
+        # Remove attribution phrases
+        sent = re.sub(r',?\s*(said|says|noted|added|explained)\s+[\w\s\.,]+$', '', sent, flags=re.IGNORECASE)
+        sent = re.sub(r',?\s*(according to|led by)\s+[\w\s\.,]+$', '', sent, flags=re.IGNORECASE)
+
+        # Clean up whitespace and punctuation
+        sent = re.sub(r'\s+', ' ', sent).strip()
+        sent = re.sub(r':the\b', ': the', sent)
+        sent = re.sub(r'\s*:\s*$', '.', sent)
+        sent = re.sub(r'\s+\.', '.', sent)
+        sent = re.sub(r'\.{2,}', '.', sent)
+        sent = re.sub(r',\s*,', ',', sent)
+        sent = re.sub(r'^\s*,\s*', '', sent)
+        sent = re.sub(r',\s*\.', '.', sent)
+
+        # Replace awkward phrases from removals
+        sent = re.sub(r'\bresearchers researchers\b', 'researchers', sent, flags=re.IGNORECASE)
+        sent = re.sub(r'\bthe the\b', 'the', sent, flags=re.IGNORECASE)
+        sent = re.sub(r'\ba a\b', 'a', sent, flags=re.IGNORECASE)
+        sent = re.sub(r'\bin the a research institution\b', 'at a research institution', sent, flags=re.IGNORECASE)
+        sent = re.sub(r'\bthe Swiss a research institution\b', 'a Swiss research institution', sent, flags=re.IGNORECASE)
+        sent = re.sub(r'\bthe a research institution\b', 'a research institution', sent, flags=re.IGNORECASE)
+        sent = re.sub(r'\bled by researchers,\s*a research institution[^,\.]*,?\s*(and\s+)?a research institution[^,\.]*', 'led by researchers at various institutions', sent, flags=re.IGNORECASE)
+        sent = re.sub(r'\bled by researchers,\s*a research institution[^,\.]*', 'led by researchers', sent, flags=re.IGNORECASE)
+        sent = re.sub(r'\bResearchers and their colleagues\b', 'Researchers', sent)
+        sent = re.sub(r'\bresearchers and their colleagues\b', 'researchers', sent)
+        sent = re.sub(r',\s*and\s*,', ' and', sent)
+        sent = re.sub(r'\bat\s*,', 'in', sent)  # Fix "at , Louisiana"
+        sent = re.sub(r'\bresearch\s*,\s*Category', 'proposed a Category', sent)  # Fix broken Category sentence
+        sent = re.sub(r'\s+', ' ', sent).strip()
+
+        # Skip if too short after cleaning
+        if len(sent) < 60:
+            continue
+
+        # Skip sentences starting with lowercase, quotes, or parentheses
+        if sent and (sent[0].islower() or sent[0] in '"("'):
+            continue
+
+        # Skip sentences that look like section headers
+        if re.match(r'^[A-Z][a-z]+(\s+[A-Z][a-z]+){1,5}\s*$', sent):
+            continue
+
+        # Skip sentences that appear incomplete (broken by text removal)
+        incomplete_patterns = [
+            r'\b(describe|describes|described)\s+as\s+(being\s+)?(in\s+)?a\s*$',
+            r'\bbecome\s+what\s+scientists\s+describe\s+as\s+That\b',
+            r'\bIn\s+this\s+context,\s*$',
+            r'\b(say|says)\s+that\s*$',
+            r'\bResearchers\s+say\.\s+As\b',
+            r'\bWe\s+picked\b',  # Quotes that weren't fully removed
+            r'\bResearchers\s+say\s+that\s+this\s+narrow\b',  # Quote remnant
+            r'\bpublished\s+on\s*\.\s*$',  # "published on ."
+            r'\bA\s+study\s+published\s+on\s*\.',  # "A study published on ."
+            r'\bthe\s+researchers\s+reported\.\s+Impossible\b',  # Broken by text removal
+            r'\bin\s+Louisiana\s*\.$',  # "in Louisiana." as ending (location remnant)
+            r'\bResearchers\s+shared\s+the\s+research\s+during\s+an\s+oral',  # Conference talk remnant
+            r'^[A-Z][a-z]+(\s+[a-z]+){2,12}\s+The\s+',  # Section header followed by sentence (e.g., "Strategies to reduce... The scale...")
+        ]
+        skip_sent = False
+        for pattern in incomplete_patterns:
+            if re.search(pattern, sent, re.IGNORECASE):
+                skip_sent = True
+                break
+        if skip_sent:
+            continue
+
+        # Ensure proper ending
+        if sent and sent[-1] not in '.!?':
+            sent += '.'
+
+        # Capitalize first letter
+        if sent and sent[0].islower():
+            sent = sent[0].upper() + sent[1:]
+
+        clean_sentences.append(sent)
+
+    sentences = clean_sentences
+
+    # Score sentences for relevance
+    discovery_words = ["found", "discovered", "shows", "revealed", "study", "research",
+                       "scientists", "researchers", "measured", "data", "results"]
+    impact_words = ["could", "may", "might", "help", "important", "means",
+                    "change", "future", "first", "new", "understand"]
+
+    scored = []
+    for sent in sentences:
+        if len(sent) > 300:  # Skip very long sentences
+            continue
+
+        score = 0
+        sent_lower = sent.lower()
+
+        for word in discovery_words:
+            if word in sent_lower:
+                score += 2
+        for word in impact_words:
+            if word in sent_lower:
+                score += 1
+        if re.search(r'\d+', sent):  # Has numbers
+            score += 1
+
+        scored.append((score, sent))
+
+    scored.sort(reverse=True, key=lambda x: x[0])
+
+    # Select top 2-3 unique sentences
+    bullet_points = []
+    used_words = []
+
+    for score, sent in scored:
+        # Check for redundancy
+        sent_words = set(sent.lower().split())
+        is_redundant = False
+        for prev_words in used_words:
+            if len(sent_words & prev_words) > len(sent_words) * 0.5:
+                is_redundant = True
+                break
+
+        if not is_redundant and score > 0:
+            bullet_points.append(sent)
+            used_words.append(sent_words)
+
+        if len(bullet_points) >= 3:
+            break
+
+    # Fallback: use first good sentences if we don't have enough
+    if len(bullet_points) < 2:
+        for sent in sentences:
+            if sent not in bullet_points:
+                bullet_points.append(sent)
+            if len(bullet_points) >= 2:
+                break
+
+    # Final fallback
+    if not bullet_points:
+        simple_summary = simplify_text(summary)
+        if simple_summary and len(simple_summary) > 50:
+            bullet_points.append(simple_summary)
+        else:
+            bullet_points.append("Scientists made new discoveries in this field of research.")
+
+    # Build HTML bullet list
+    html_parts = ['<ul class="summary-bullets">']
+    for point in bullet_points[:3]:
+        html_parts.append(f'<li>{point}</li>')
+    html_parts.append('</ul>')
+
+    return '\n'.join(html_parts)
+
+
+def get_base_url(url):
+    """Extract base URL for building full links."""
+    if "sciencedaily.com" in url:
+        return "https://www.sciencedaily.com"
+    elif "phys.org" in url:
+        return "https://phys.org"
+    elif "eurekalert.org" in url:
+        return "https://www.eurekalert.org"
+    elif "space.com" in url:
+        return "https://www.space.com"
+    elif "livescience.com" in url:
+        return "https://www.livescience.com"
+    elif "nasa.gov" in url:
+        return "https://www.nasa.gov"
+    elif "noaa.gov" in url:
+        return "https://www.noaa.gov"
+    return ""
+
+
+def get_source_name(url):
+    """Get display name for a source URL."""
+    if "sciencedaily" in url:
+        return "ScienceDaily"
+    elif "phys.org" in url:
+        return "Phys.org"
+    elif "eurekalert" in url:
+        return "EurekAlert"
+    elif "space.com" in url:
+        return "Space.com"
+    elif "livescience" in url:
+        return "Live Science"
+    elif "nasa.gov" in url:
+        return "NASA"
+    elif "noaa.gov" in url:
+        return "NOAA"
+    return "Science News"
+
+
+def fetch_domain_articles(domain, urls):
+    """Fetch articles for a specific scientific domain from free sources only."""
+    articles = []
+    seen_titles = set()
+
+    for url in urls:
+        if len(articles) >= 6:  # Fetch extra to have options after filtering
+            break
+
+        try:
+            response = requests.get(url, headers=HEADERS, timeout=15)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Find article elements based on source
+            if "sciencedaily" in url:
+                article_elements = soup.select("#headlines a, .latest-head a, #featured a")
+            elif "phys.org" in url:
+                article_elements = soup.select("article h3 a, .news-item h3 a, article a[href*='/news/']")
+            elif "eurekalert" in url:
+                article_elements = soup.select(".release-item a, article a, .item a")
+            elif "space.com" in url or "livescience" in url:
+                article_elements = soup.select("article a, .listingResult a, .content a[href*='/']")
+            elif "nasa.gov" in url:
+                article_elements = soup.select(".hds-content-item a, article a, .card a")
+            elif "noaa.gov" in url:
+                article_elements = soup.select("article a, .news-item a, .card a")
+            else:
+                article_elements = soup.select("article a, h2 a, h3 a")
+
+            for elem in article_elements[:15]:
+                if len(articles) >= 6:
+                    break
+
+                try:
+                    # Get headline
+                    headline = elem.get_text(strip=True)
+                    href = elem.get("href", "")
+
+                    if not headline or len(headline) < 15 or headline in seen_titles:
+                        continue
+
+                    # Skip non-article items
+                    skip_words = ["subscribe", "newsletter", "sign in", "menu", "search",
+                                  "advertisement", "about us", "contact", "privacy"]
+                    if any(skip in headline.lower() for skip in skip_words):
+                        continue
+
+                    # Build full URL
+                    if href and not href.startswith("http"):
+                        base = get_base_url(url)
+                        if base:
+                            href = base + href if href.startswith("/") else base + "/" + href
+
+                    # Skip if URL is from paywalled domain
+                    if is_paywalled_url(href):
+                        continue
+
+                    # Get summary from parent element if possible
+                    summary = ""
+                    parent = elem.find_parent(["article", "div", "li"])
+                    if parent:
+                        summary_el = parent.select_one("p, .summary, .excerpt, .description")
+                        if summary_el:
+                            summary = summary_el.get_text(strip=True)
+
+                    if not summary:
+                        summary = headline
+
+                    # Verify this article belongs to this domain
+                    detected_domain = classify_domain(headline, summary)
+                    if detected_domain != domain:
+                        continue
+
+                    seen_titles.add(headline)
+
+                    articles.append({
+                        "title": headline,
+                        "summary": summary[:400] if len(summary) > 400 else summary,
+                        "url": href or url,
+                        "source": get_source_name(url),
+                        "domain": domain
+                    })
+
+                except Exception:
+                    continue
+
+        except Exception as e:
+            print(f"    Warning: Could not fetch {url}: {e}", file=sys.stderr)
+            continue
+
+    return articles
+
+
+def enrich_with_explanations(articles):
+    """Add simple explanations to articles by fetching more content."""
+    enriched = []
+
+    for article in articles:
+        print(f"      Processing: {article['title'][:50]}...")
+
+        # Skip paywalled URLs
+        if is_paywalled_url(article.get("url", "")):
+            print(f"        Skipping (paywalled source)")
+            continue
+
+        # Try to fetch full article content
+        full_content = ""
+        if article.get("url"):
+            full_content = fetch_article_content(article["url"])
+
+        # If we got no content, the article might be paywalled
+        if not full_content and article["summary"] == article["title"]:
+            print(f"        Skipping (could not access content)")
+            continue
+
+        # Generate simple explanation
+        explanation = generate_simple_explanation(
+            article["title"],
+            article["summary"],
+            full_content
+        )
+
+        article["explanation"] = explanation
+        enriched.append(article)
+
+    return enriched
+
+
+def generate_html(domains_articles):
+    """Generate a clean, readable HTML page organized by domain."""
+    today = datetime.now().strftime("%A, %B %d, %Y")
+    update_time = datetime.now().strftime("%I:%M %p")
+
+    domain_config = {
+        "Astronomy": {"icon": "&#127776;", "class": "astronomy", "desc": "Stars, Planets & Space"},
+        "Biology": {"icon": "&#129516;", "class": "biology", "desc": "Life & Living Things"},
+        "Climate": {"icon": "&#127758;", "class": "climate", "desc": "Weather & Environment"},
+    }
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Science Digest - {today}</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e8e8e8;
+            line-height: 1.8;
+        }}
+
+        .container {{
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }}
+
+        header {{
+            text-align: center;
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }}
+
+        h1 {{
+            font-size: 2.8em;
+            font-weight: 300;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b68ee, #ff6b9d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }}
+
+        .subtitle {{
+            color: #8892b0;
+            font-size: 1.1em;
+            font-style: italic;
+        }}
+
+        .date {{
+            color: #64ffda;
+            font-size: 0.95em;
+            margin-top: 15px;
+            letter-spacing: 1px;
+        }}
+
+        .free-badge {{
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 14px;
+            background: rgba(100, 255, 218, 0.1);
+            border-radius: 20px;
+            font-size: 0.8em;
+            color: #64ffda;
+        }}
+
+        .domain-section {{
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+        }}
+
+        .domain-header {{
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }}
+
+        .domain-icon {{
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 18px;
+            font-size: 1.6em;
+        }}
+
+        .astronomy-icon {{
+            background: linear-gradient(135deg, #4a00e0, #8e2de2);
+        }}
+
+        .biology-icon {{
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+        }}
+
+        .climate-icon {{
+            background: linear-gradient(135deg, #0575e6, #00d4ff);
+        }}
+
+        .domain-title-group h2 {{
+            font-size: 1.5em;
+            font-weight: 500;
+            color: #ccd6f6;
+            margin-bottom: 4px;
+        }}
+
+        .domain-desc {{
+            font-size: 0.9em;
+            color: #8892b0;
+        }}
+
+        .article-list {{
+            list-style: none;
+        }}
+
+        .article-item {{
+            padding: 25px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }}
+
+        .article-item:last-child {{
+            border-bottom: none;
+            padding-bottom: 0;
+        }}
+
+        .article-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }}
+
+        .article-title {{
+            font-size: 1.2em;
+            color: #64ffda;
+            text-decoration: none;
+            display: block;
+            flex: 1;
+            transition: color 0.3s ease;
+            line-height: 1.4;
+        }}
+
+        .article-title:hover {{
+            color: #00d4ff;
+        }}
+
+        .bullet {{
+            color: #7b68ee;
+            margin-right: 12px;
+            font-size: 1.1em;
+        }}
+
+        .article-source {{
+            font-size: 0.75em;
+            color: #5a6a8a;
+            background: rgba(255,255,255,0.05);
+            padding: 4px 10px;
+            border-radius: 12px;
+            margin-left: 15px;
+            white-space: nowrap;
+        }}
+
+        .article-explanation {{
+            background: rgba(100, 255, 218, 0.05);
+            border-left: 3px solid #64ffda;
+            padding: 15px 20px;
+            margin-top: 15px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.95em;
+            color: #b8c5d6;
+            line-height: 1.7;
+        }}
+
+        .article-explanation .summary-bullets {{
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }}
+
+        .article-explanation .summary-bullets li {{
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }}
+
+        .article-explanation .summary-bullets li:last-child {{
+            margin-bottom: 0;
+        }}
+
+        .article-explanation .summary-bullets li::before {{
+            content: "\\2022";
+            color: #64ffda;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }}
+
+        .no-articles {{
+            color: #8892b0;
+            font-style: italic;
+            text-align: center;
+            padding: 30px;
+        }}
+
+        footer {{
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #5a6a8a;
+            font-size: 0.85em;
+        }}
+
+        .sources-list {{
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #64ffda;
+        }}
+
+        .refresh-btn {{
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #7b68ee, #00d4ff);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }}
+
+        .refresh-btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(123, 104, 238, 0.3);
+        }}
+
+        @media (max-width: 600px) {{
+            h1 {{
+                font-size: 2em;
+            }}
+
+            .domain-section {{
+                padding: 20px;
+            }}
+
+            .article-header {{
+                flex-direction: column;
+            }}
+
+            .article-source {{
+                margin-left: 24px;
+                margin-top: 8px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SCIENCE DIGEST</h1>
+            <p class="subtitle">Your Daily Science News, Made Simple</p>
+            <p class="date">{today} &bull; Updated at {update_time}</p>
+            <span class="free-badge">100% Free &amp; Open Access Sources</span>
+        </header>
+"""
+
+    for domain in ["Astronomy", "Biology", "Climate"]:
+        articles = domains_articles.get(domain, [])
+        config = domain_config[domain]
+
+        html += f"""
+        <section class="domain-section">
+            <div class="domain-header">
+                <div class="domain-icon {config['class']}-icon">{config['icon']}</div>
+                <div class="domain-title-group">
+                    <h2>{domain}</h2>
+                    <span class="domain-desc">{config['desc']}</span>
+                </div>
+            </div>
+            <ul class="article-list">
+"""
+        if articles:
+            for article in articles[:3]:
+                html += f"""                <li class="article-item">
+                    <div class="article-header">
+                        <a href="{article['url']}" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>{article['title']}
+                        </a>
+                        <span class="article-source">{article['source']}</span>
+                    </div>
+                    <div class="article-explanation">
+                        {article.get('explanation', article['summary'])}
+                    </div>
+                </li>
+"""
+        else:
+            html += """                <li class="no-articles">No articles available in this category today. Check back tomorrow!</li>
+"""
+
+        html += """            </ul>
+        </section>
+"""
+
+    html += """
+        <footer>
+            <p>All articles from free, open access sources - no paywalls!</p>
+            <p class="sources-list">ScienceDaily &bull; Phys.org &bull; EurekAlert &bull; NASA &bull; NOAA &bull; Space.com &bull; Live Science</p>
+            <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
+        </footer>
+    </div>
+</body>
+</html>
+"""
+
+    return html
+
+
+def update_digest():
+    """Fetch articles and update the HTML page."""
+    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Updating Science Digest...")
+    print("  Using only FREE, open access sources (no paywalls)")
+
+    domains_articles = {}
+
+    for domain, urls in DOMAIN_URLS.items():
+        print(f"  Fetching {domain} articles...")
+        articles = fetch_domain_articles(domain, urls)
+        print(f"    Found {len(articles)} free articles")
+
+        if articles:
+            print(f"    Generating simple explanations...")
+            articles = enrich_with_explanations(articles[:4])  # Process a few extra in case some fail
+
+        domains_articles[domain] = articles[:3]  # Keep top 3
+
+    print("  Generating HTML...")
+    html = generate_html(domains_articles)
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(script_dir, OUTPUT_FILE)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    total_articles = sum(len(a) for a in domains_articles.values())
+    print(f"  Saved {total_articles} articles to: {output_path}")
+    print("  Done!")
+
+    return output_path
+
+
+def run_daemon():
+    """Run in daemon mode, updating daily."""
+    import schedule
+
+    print("\nRunning in daemon mode - will update daily at 8:00 AM")
+    print("Press Ctrl+C to stop\n")
+
+    schedule.every().day.at("08:00").do(update_digest)
+
+    try:
+        while True:
+            schedule.run_pending()
+            time.sleep(60)
+    except KeyboardInterrupt:
+        print("\nDaemon stopped.")
+
+
+def main():
+    """Main entry point."""
+    print("=" * 60)
+    print("  SCIENCE DIGEST - Free & Open Access Science News")
+    print("=" * 60)
+
+    # Generate initial digest
+    output_path = update_digest()
+
+    # Open in browser (unless --no-browser flag is set)
+    if "--no-browser" not in sys.argv:
+        print(f"\nOpening in browser...")
+        webbrowser.open(f"file://{output_path}")
+
+    # Check for daemon mode
+    if "--daemon" in sys.argv or "-d" in sys.argv:
+        try:
+            run_daemon()
+        except ImportError:
+            print("\nNote: Install 'schedule' package for daemon mode: pip install schedule")
+            print("For now, you can manually run this script daily or set up a cron job.")
+    else:
+        print("\nTip: Run with --daemon or -d flag for automatic daily updates")
+        print(f"\nTo view the digest again, open: {output_path}")
+
+
+if __name__ == "__main__":
+    main()

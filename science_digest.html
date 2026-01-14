@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Science Digest - Wednesday, January 14, 2026</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e8e8e8;
+            line-height: 1.8;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        h1 {
+            font-size: 2.8em;
+            font-weight: 300;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b68ee, #ff6b9d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #8892b0;
+            font-size: 1.1em;
+            font-style: italic;
+        }
+
+        .date {
+            color: #64ffda;
+            font-size: 0.95em;
+            margin-top: 15px;
+            letter-spacing: 1px;
+        }
+
+        .free-badge {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 14px;
+            background: rgba(100, 255, 218, 0.1);
+            border-radius: 20px;
+            font-size: 0.8em;
+            color: #64ffda;
+        }
+
+        .domain-section {
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .domain-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .domain-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 18px;
+            font-size: 1.6em;
+        }
+
+        .astronomy-icon {
+            background: linear-gradient(135deg, #4a00e0, #8e2de2);
+        }
+
+        .biology-icon {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+        }
+
+        .climate-icon {
+            background: linear-gradient(135deg, #0575e6, #00d4ff);
+        }
+
+        .domain-title-group h2 {
+            font-size: 1.5em;
+            font-weight: 500;
+            color: #ccd6f6;
+            margin-bottom: 4px;
+        }
+
+        .domain-desc {
+            font-size: 0.9em;
+            color: #8892b0;
+        }
+
+        .article-list {
+            list-style: none;
+        }
+
+        .article-item {
+            padding: 25px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .article-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .article-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .article-title {
+            font-size: 1.2em;
+            color: #64ffda;
+            text-decoration: none;
+            display: block;
+            flex: 1;
+            transition: color 0.3s ease;
+            line-height: 1.4;
+        }
+
+        .article-title:hover {
+            color: #00d4ff;
+        }
+
+        .bullet {
+            color: #7b68ee;
+            margin-right: 12px;
+            font-size: 1.1em;
+        }
+
+        .article-source {
+            font-size: 0.75em;
+            color: #5a6a8a;
+            background: rgba(255,255,255,0.05);
+            padding: 4px 10px;
+            border-radius: 12px;
+            margin-left: 15px;
+            white-space: nowrap;
+        }
+
+        .article-explanation {
+            background: rgba(100, 255, 218, 0.05);
+            border-left: 3px solid #64ffda;
+            padding: 15px 20px;
+            margin-top: 15px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.95em;
+            color: #b8c5d6;
+            line-height: 1.7;
+        }
+
+        .article-explanation .summary-bullets {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .article-explanation .summary-bullets li {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        .article-explanation .summary-bullets li:last-child {
+            margin-bottom: 0;
+        }
+
+        .article-explanation .summary-bullets li::before {
+            content: "\2022";
+            color: #64ffda;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .no-articles {
+            color: #8892b0;
+            font-style: italic;
+            text-align: center;
+            padding: 30px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #5a6a8a;
+            font-size: 0.85em;
+        }
+
+        .sources-list {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #64ffda;
+        }
+
+        .refresh-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #7b68ee, #00d4ff);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(123, 104, 238, 0.3);
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .domain-section {
+                padding: 20px;
+            }
+
+            .article-header {
+                flex-direction: column;
+            }
+
+            .article-source {
+                margin-left: 24px;
+                margin-top: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SCIENCE DIGEST</h1>
+            <p class="subtitle">Your Daily Science News, Made Simple</p>
+            <p class="date">Wednesday, January 14, 2026 &bull; Updated at 10:43 AM</p>
+            <span class="free-badge">100% Free &amp; Open Access Sources</span>
+        </header>
+
+        <section class="domain-section">
+            <div class="domain-header">
+                <div class="domain-icon astronomy-icon">&#127776;</div>
+                <div class="domain-title-group">
+                    <h2>Astronomy</h2>
+                    <span class="domain-desc">Stars, Planets & Space</span>
+                </div>
+            </div>
+            <ul class="article-list">
+                <li class="article-item">
+                    <div class="article-header">
+                        <a href="https://www.sciencedaily.com/releases/2026/01/260107221839.htm" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>Something Was Pumping Enormous Energy Into a Young Galaxy Cluster
+                        </a>
+                        <span class="article-source">ScienceDaily</span>
+                    </div>
+                    <div class="article-explanation">
+                        <ul class="summary-bullets">
+<li>The cluster contains more than 30 active galaxies packed closely together and is producing new stars at a rate more than 5,000 times higher than that of our own galaxy.</li>
+<li>Its central region spans about 500,000 light years, similar in size to the halo surrounding the Milky Way.</li>
+</ul>
+                    </div>
+                </li>
+                <li class="article-item">
+                    <div class="article-header">
+                        <a href="https://www.sciencedaily.com/releases/2026/01/260101160859.htm" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>Astronomers Measure the Mass of a Rogue Planet Drifting Through the Galaxy
+                        </a>
+                        <span class="article-source">ScienceDaily</span>
+                    </div>
+                    <div class="article-explanation">
+                        <ul class="summary-bullets">
+<li>In the new research, researchers describe the discovery of a free-floating planet spotted during a short microlensing event.</li>
+<li>When combined with finite-source point-lens modeling, this information allowed the researchers to determine both the planet's mass and where it is located in the galaxy.</li>
+<li>With a mass similar to Saturn, the researchers suggest that it most likely formed within a planetary system rather than developing on its own like a small star or brown dwarf.</li>
+</ul>
+                    </div>
+                </li>
+                <li class="article-item">
+                    <div class="article-header">
+                        <a href="https://www.sciencedaily.com/releases/2025/12/251231203753.htm" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>Astronomers Ring in the New Year With a Stunning Galaxy Collision
+                        </a>
+                        <span class="article-source">ScienceDaily</span>
+                    </div>
+                    <div class="article-explanation">
+                        <ul class="summary-bullets">
+<li>That date, along with the cluster's bubbly look and the superheated gas detected by Chandra (represented in purple), led researchers to give it the memorable nickname instead of its formal name, the cluster.</li>
+<li>In most clusters, gas heated to millions of degrees appears roughly circular or slightly oval in images.</li>
+</ul>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <section class="domain-section">
+            <div class="domain-header">
+                <div class="domain-icon biology-icon">&#129516;</div>
+                <div class="domain-title-group">
+                    <h2>Biology</h2>
+                    <span class="domain-desc">Life & Living Things</span>
+                </div>
+            </div>
+            <ul class="article-list">
+                <li class="article-item">
+                    <div class="article-header">
+                        <a href="https://www.sciencedaily.com/releases/2025/12/251224032345.htm" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>We Are Living in a Golden Age of Species Discovery
+                        </a>
+                        <span class="article-source">ScienceDaily</span>
+                    </div>
+                    <div class="article-explanation">
+                        <ul class="summary-bullets">
+<li>Looking at the most recent period with complete data, between 2015 and 2020, they found that researchers documented an average of more than 16,000 new species per year.</li>
+<li>Today, scientists are identifying more than 16,000 new species each year, the highest rate ever recorded.</li>
+<li>Their projections suggest there could be as many as 115,000 fish species and 41,000 amphibian species, compared with about 42,000 fish and 9,000 amphibians currently described.</li>
+</ul>
+                    </div>
+                </li>
+                <li class="article-item">
+                    <div class="article-header">
+                        <a href="https://www.sciencedaily.com/releases/2025/12/251222080127.htm" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>Why Evolution Rewarded Ants That Sacrificed Protection
+                        </a>
+                        <span class="article-source">ScienceDaily</span>
+                    </div>
+                    <div class="article-explanation">
+                        <ul class="summary-bullets">
+<li>According to the researchers, this approach of creating many less-protected ants instead of fewer heavily armored ones proved to be evolutionarily successful.</li>
+<li>New research suggests this same tradeoff has shaped evolution, especially in the rise of complex animal societies.</li>
+<li>The findings help explain how individuals can change as large, complex societies develop, including those seen in humans.</li>
+</ul>
+                    </div>
+                </li>
+                <li class="article-item">
+                    <div class="article-header">
+                        <a href="https://www.sciencedaily.com/releases/2025/12/251226045324.htm" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>Scientists Replayed Evolution and Found a Surprise
+                        </a>
+                        <span class="article-source">ScienceDaily</span>
+                    </div>
+                    <div class="article-explanation">
+                        <ul class="summary-bullets">
+<li>Together, they designed a groundbreaking study using advanced computer simulations that followed thousands of generations of digital organisms.</li>
+<li>A population in the United States might experience seasonal temperature swings, while another in Kenya alternates between long dry spells and heavy rainfall.</li>
+</ul>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <section class="domain-section">
+            <div class="domain-header">
+                <div class="domain-icon climate-icon">&#127758;</div>
+                <div class="domain-title-group">
+                    <h2>Climate</h2>
+                    <span class="domain-desc">Weather & Environment</span>
+                </div>
+            </div>
+            <ul class="article-list">
+                <li class="article-item">
+                    <div class="article-header">
+                        <a href="https://www.sciencedaily.com/releases/2025/12/251218060550.htm" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>The Western U.S. Tried to Stop Wildfires and It Backfired
+                        </a>
+                        <span class="article-source">ScienceDaily</span>
+                    </div>
+                    <div class="article-explanation">
+                        <ul class="summary-bullets">
+<li>Together, drying conditions and overly dense fuels portend a challenging and more fiery future.</li>
+<li>To close that gap, forests would need about 3.8 million hectares to burn each year for a decade.</li>
+</ul>
+                    </div>
+                </li>
+                <li class="article-item">
+                    <div class="article-header">
+                        <a href="https://www.sciencedaily.com/releases/2025/12/251225080725.htm" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>Oceans Are Supercharging Hurricanes Past Category 5
+                        </a>
+                        <span class="article-source">ScienceDaily</span>
+                    </div>
+                    <div class="article-explanation">
+                        <ul class="summary-bullets">
+<li>Under their proposal, Category 6 tropical cyclones would include storms with wind speeds exceeding 160 knots.</li>
+<li>Until now, any storm stronger than 137 knots has been grouped into Category 5, which most weather agencies still consider the highest level.</li>
+<li>Category 4, for example, includes winds between 114-137 knots.</li>
+</ul>
+                    </div>
+                </li>
+                <li class="article-item">
+                    <div class="article-header">
+                        <a href="https://www.sciencedaily.com/releases/2025/12/251219030455.htm" class="article-title" target="_blank">
+                            <span class="bullet">&#8226;</span>A Stunning New Forecast Shows When Thousands of Glaciers Will Vanish
+                        </a>
+                        <span class="article-source">ScienceDaily</span>
+                    </div>
+                    <div class="article-explanation">
+                        <ul class="summary-bullets">
+<li>These changes extend a pattern already documented by researchers, and there is no indication that it is slowing.</li>
+<li>For the first time, the researchers calculated how many glaciers around the world disappear each year, how many are likely to survive through the end of the century, and how long individual glaciers are expected to persist.</li>
+<li>Their work shows that between 1973 and 2016, more than 1,000 glaciers disappeared in Switzerland alone.</li>
+</ul>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <footer>
+            <p>All articles from free, open access sources - no paywalls!</p>
+            <p class="sources-list">ScienceDaily &bull; Phys.org &bull; EurekAlert &bull; NASA &bull; NOAA &bull; Space.com &bull; Live Science</p>
+            <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
+        </footer>
+    </div>
+</body>
+</html>
