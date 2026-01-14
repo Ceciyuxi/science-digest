@@ -11,7 +11,8 @@
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "Bash(brew install:*)"
+      "Bash(brew install:*)",
+      "WebFetch(domain:ceciyuxi.github.io)"
     ]
   }
 }

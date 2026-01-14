@@ -190,8 +190,50 @@ def classify_domain(title, summary):
     return None
 
 
+def normalize_characters(text):
+    """Convert smart quotes and special characters to ASCII equivalents."""
+    if not text:
+        return text
+
+    # Smart quotes and apostrophes
+    char_map = {
+        '\u2018': "'",   # Left single quote '
+        '\u2019': "'",   # Right single quote '
+        '\u201C': '"',   # Left double quote "
+        '\u201D': '"',   # Right double quote "
+        '\u2032': "'",   # Prime ′
+        '\u2033': '"',   # Double prime ″
+        '\u0060': "'",   # Grave accent `
+        '\u00B4': "'",   # Acute accent ´
+        # Dashes
+        '\u2013': '-',   # En dash –
+        '\u2014': '-',   # Em dash —
+        '\u2015': '-',   # Horizontal bar ―
+        '\u2012': '-',   # Figure dash ‒
+        # Spaces
+        '\u00A0': ' ',   # Non-breaking space
+        '\u2003': ' ',   # Em space
+        '\u2002': ' ',   # En space
+        '\u2009': ' ',   # Thin space
+        # Other
+        '\u2026': '...',  # Ellipsis …
+        '\u00AB': '"',    # Left guillemet «
+        '\u00BB': '"',    # Right guillemet »
+        '\u201A': "'",    # Single low quote ‚
+        '\u201E': '"',    # Double low quote „
+    }
+
+    for char, replacement in char_map.items():
+        text = text.replace(char, replacement)
+
+    return text
+
+
 def simplify_text(text):
     """Simplify text to approximately 7th grade reading level."""
+    # First normalize special characters
+    text = normalize_characters(text)
+
     # Remove complex punctuation and clean up
     text = re.sub(r'\s+', ' ', text).strip()
 
@@ -1099,15 +1141,18 @@ def generate_html(domains_articles):
 """
         if articles:
             for article in articles[:3]:
+                # Normalize all text to fix encoding issues
+                title = normalize_characters(article['title'])
+                explanation = normalize_characters(article.get('explanation', article['summary']))
                 html += f"""                <li class="article-item">
                     <div class="article-header">
                         <a href="{article['url']}" class="article-title" target="_blank">
-                            <span class="bullet">&#8226;</span>{article['title']}
+                            <span class="bullet">&#8226;</span>{title}
                         </a>
                         <span class="article-source">{article['source']}</span>
                     </div>
                     <div class="article-explanation">
-                        {article.get('explanation', article['summary'])}
+                        {explanation}
                     </div>
                 </li>
 """
