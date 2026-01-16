@@ -12,7 +12,9 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(brew install:*)",
-      "WebFetch(domain:ceciyuxi.github.io)"
+      "WebFetch(domain:ceciyuxi.github.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

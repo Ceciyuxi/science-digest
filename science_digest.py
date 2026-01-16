@@ -195,7 +195,26 @@ def normalize_characters(text):
     if not text:
         return text
 
-    # Smart quotes and apostrophes
+    # Fix mojibake (UTF-8 incorrectly decoded) - must come first
+    mojibake_fixes = [
+        ('â€™', "'"),     # Right single quote
+        ('â€˜', "'"),     # Left single quote
+        ('â€œ', '"'),     # Left double quote
+        ('â€', '"'),      # Right double quote (partial)
+        ('â€"', '-'),     # Em dash
+        ('â€"', '-'),     # En dash
+        ('â€¦', '...'),   # Ellipsis
+    ]
+    for bad, good in mojibake_fixes:
+        text = text.replace(bad, good)
+
+    # Clean up any remaining â characters from partial mojibake
+    text = re.sub(r'â€[™˜œ""\u0099\u009c\u009d]?', "'", text)
+    # Handle case where â appears alone (partial corruption, e.g., "Dwarf's" -> "Dwarfâs")
+    text = re.sub(r'(\w)â(\w)', r"\1'\2", text)  # letter-â-letter -> letter-'-letter
+    text = re.sub(r'â', "'", text)  # Any remaining â -> apostrophe
+
+    # Smart quotes and apostrophes (proper Unicode)
     char_map = {
         '\u2018': "'",   # Left single quote '
         '\u2019': "'",   # Right single quote '
@@ -205,11 +224,17 @@ def normalize_characters(text):
         '\u2033': '"',   # Double prime ″
         '\u0060': "'",   # Grave accent `
         '\u00B4': "'",   # Acute accent ´
+        ''': "'",        # Direct left single quote
+        ''': "'",        # Direct right single quote
+        '"': '"',        # Direct left double quote
+        '"': '"',        # Direct right double quote
         # Dashes
         '\u2013': '-',   # En dash –
         '\u2014': '-',   # Em dash —
         '\u2015': '-',   # Horizontal bar ―
         '\u2012': '-',   # Figure dash ‒
+        '–': '-',        # Direct en dash
+        '—': '-',        # Direct em dash
         # Spaces
         '\u00A0': ' ',   # Non-breaking space
         '\u2003': ' ',   # Em space
@@ -217,6 +242,7 @@ def normalize_characters(text):
         '\u2009': ' ',   # Thin space
         # Other
         '\u2026': '...',  # Ellipsis …
+        '…': '...',       # Direct ellipsis
         '\u00AB': '"',    # Left guillemet «
         '\u00BB': '"',    # Right guillemet »
         '\u201A': "'",    # Single low quote ‚
