@@ -862,7 +862,7 @@ def enrich_with_explanations(articles):
 
 
 def generate_html(domains_articles):
-    """Generate a clean, readable HTML page organized by domain."""
+    """Generate a clean, readable HTML page with tile/card-based layout."""
     # Use Mountain Time for display
     now_mt = datetime.now(MOUNTAIN_TZ)
     today = now_mt.strftime("%A, %B %d, %Y")
@@ -880,6 +880,7 @@ def generate_html(domains_articles):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Science Digest - {today}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * {{
             margin: 0;
@@ -888,31 +889,31 @@ def generate_html(domains_articles):
         }}
 
         body {{
-            font-family: 'Georgia', 'Times New Roman', serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
             min-height: 100vh;
             color: #e8e8e8;
-            line-height: 1.8;
+            line-height: 1.7;
         }}
 
         .container {{
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 40px 24px;
         }}
 
         header {{
             text-align: center;
-            margin-bottom: 50px;
-            padding-bottom: 30px;
-            border-bottom: 2px solid rgba(255,255,255,0.1);
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
         }}
 
         h1 {{
-            font-size: 2.8em;
+            font-size: 3.2em;
             font-weight: 300;
-            letter-spacing: 3px;
-            margin-bottom: 10px;
+            letter-spacing: 8px;
+            margin-bottom: 12px;
             background: linear-gradient(90deg, #00d4ff, #7b68ee, #ff6b9d);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -922,52 +923,52 @@ def generate_html(domains_articles):
         .subtitle {{
             color: #8892b0;
             font-size: 1.1em;
-            font-style: italic;
+            font-weight: 300;
+            letter-spacing: 2px;
         }}
 
         .date {{
             color: #64ffda;
-            font-size: 0.95em;
-            margin-top: 15px;
+            font-size: 0.9em;
+            margin-top: 20px;
             letter-spacing: 1px;
+            font-weight: 500;
         }}
 
         .free-badge {{
             display: inline-block;
-            margin-top: 10px;
-            padding: 6px 14px;
+            margin-top: 16px;
+            padding: 8px 20px;
             background: rgba(100, 255, 218, 0.1);
-            border-radius: 20px;
-            font-size: 0.8em;
+            border: 1px solid rgba(100, 255, 218, 0.3);
+            border-radius: 30px;
+            font-size: 0.75em;
             color: #64ffda;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }}
 
         .domain-section {{
-            background: rgba(255,255,255,0.03);
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 25px;
-            border: 1px solid rgba(255,255,255,0.05);
-            backdrop-filter: blur(10px);
+            margin-bottom: 50px;
         }}
 
         .domain-header {{
             display: flex;
             align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 28px;
+            padding-left: 8px;
         }}
 
         .domain-icon {{
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 18px;
-            font-size: 1.6em;
+            margin-right: 20px;
+            font-size: 1.8em;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         }}
 
         .astronomy-icon {{
@@ -983,162 +984,223 @@ def generate_html(domains_articles):
         }}
 
         .domain-title-group h2 {{
-            font-size: 1.5em;
-            font-weight: 500;
-            color: #ccd6f6;
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #ffffff;
             margin-bottom: 4px;
+            letter-spacing: 0.5px;
         }}
 
         .domain-desc {{
             font-size: 0.9em;
             color: #8892b0;
+            font-weight: 400;
         }}
 
-        .article-list {{
-            list-style: none;
+        /* Card Grid Layout */
+        .cards-grid {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
         }}
 
-        .article-item {{
-            padding: 25px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }}
-
-        .article-item:last-child {{
-            border-bottom: none;
-            padding-bottom: 0;
-        }}
-
-        .article-header {{
+        .card {{
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 28px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
         }}
 
-        .article-title {{
-            font-size: 1.2em;
+        .card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #64ffda, #7b68ee);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }}
+
+        .card:hover {{
+            transform: translateY(-8px);
+            border-color: rgba(100, 255, 218, 0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 40px rgba(100, 255, 218, 0.1);
+            background: rgba(255,255,255,0.05);
+        }}
+
+        .card:hover::before {{
+            opacity: 1;
+        }}
+
+        .card-source {{
+            font-size: 0.7em;
             color: #64ffda;
+            background: rgba(100, 255, 218, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 16px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }}
+
+        .card-title {{
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #ffffff;
             text-decoration: none;
             display: block;
-            flex: 1;
+            margin-bottom: 20px;
+            line-height: 1.5;
             transition: color 0.3s ease;
-            line-height: 1.4;
         }}
 
-        .article-title:hover {{
-            color: #00d4ff;
+        .card-title:hover {{
+            color: #64ffda;
         }}
 
-        .bullet {{
-            color: #7b68ee;
-            margin-right: 12px;
-            font-size: 1.1em;
-        }}
-
-        .article-source {{
-            font-size: 0.75em;
-            color: #5a6a8a;
-            background: rgba(255,255,255,0.05);
-            padding: 4px 10px;
-            border-radius: 12px;
-            margin-left: 15px;
-            white-space: nowrap;
-        }}
-
-        .article-explanation {{
-            background: rgba(100, 255, 218, 0.05);
-            border-left: 3px solid #64ffda;
-            padding: 15px 20px;
-            margin-top: 15px;
-            border-radius: 0 8px 8px 0;
-            font-size: 0.95em;
-            color: #b8c5d6;
-            line-height: 1.7;
-        }}
-
-        .article-explanation .summary-bullets {{
+        .card-bullets {{
             list-style: none;
-            margin: 0;
-            padding: 0;
+            flex-grow: 1;
         }}
 
-        .article-explanation .summary-bullets li {{
+        .card-bullets li {{
             position: relative;
-            padding-left: 20px;
-            margin-bottom: 12px;
+            padding-left: 18px;
+            margin-bottom: 14px;
+            font-size: 0.88em;
+            color: #a8b2d1;
             line-height: 1.6;
         }}
 
-        .article-explanation .summary-bullets li:last-child {{
+        .card-bullets li:last-child {{
             margin-bottom: 0;
         }}
 
-        .article-explanation .summary-bullets li::before {{
-            content: "\\2022";
-            color: #64ffda;
-            font-weight: bold;
+        .card-bullets li::before {{
+            content: "";
             position: absolute;
             left: 0;
-            top: 0;
+            top: 9px;
+            width: 6px;
+            height: 6px;
+            background: #64ffda;
+            border-radius: 50%;
         }}
 
         .no-articles {{
+            grid-column: 1 / -1;
             color: #8892b0;
             font-style: italic;
             text-align: center;
-            padding: 30px;
+            padding: 60px 30px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 20px;
+            border: 1px dashed rgba(255,255,255,0.1);
         }}
 
         footer {{
             text-align: center;
-            margin-top: 50px;
-            padding-top: 30px;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            margin-top: 60px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255,255,255,0.08);
             color: #5a6a8a;
             font-size: 0.85em;
         }}
 
         .sources-list {{
-            margin-top: 10px;
-            font-size: 0.9em;
+            margin-top: 12px;
+            font-size: 0.85em;
             color: #64ffda;
         }}
 
         .refresh-btn {{
             display: inline-block;
-            margin-top: 20px;
-            padding: 12px 30px;
+            margin-top: 24px;
+            padding: 14px 36px;
             background: linear-gradient(135deg, #7b68ee, #00d4ff);
             color: white;
             text-decoration: none;
-            border-radius: 25px;
-            font-size: 0.9em;
+            border-radius: 30px;
+            font-size: 0.85em;
+            font-weight: 500;
+            letter-spacing: 1px;
             transition: all 0.3s ease;
             border: none;
             cursor: pointer;
+            text-transform: uppercase;
         }}
 
         .refresh-btn:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(123, 104, 238, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(123, 104, 238, 0.4);
         }}
 
-        @media (max-width: 600px) {{
+        /* Responsive Design */
+        @media (max-width: 1200px) {{
+            .cards-grid {{
+                grid-template-columns: repeat(2, 1fr);
+            }}
+        }}
+
+        @media (max-width: 768px) {{
+            .container {{
+                padding: 24px 16px;
+            }}
+
             h1 {{
-                font-size: 2em;
+                font-size: 2.2em;
+                letter-spacing: 4px;
             }}
 
-            .domain-section {{
-                padding: 20px;
+            .cards-grid {{
+                grid-template-columns: 1fr;
+                gap: 20px;
             }}
 
-            .article-header {{
-                flex-direction: column;
+            .card {{
+                padding: 24px;
             }}
 
-            .article-source {{
-                margin-left: 24px;
-                margin-top: 8px;
+            .domain-header {{
+                padding-left: 0;
+            }}
+
+            .domain-icon {{
+                width: 48px;
+                height: 48px;
+                font-size: 1.5em;
+            }}
+
+            .domain-title-group h2 {{
+                font-size: 1.3em;
+            }}
+        }}
+
+        @media (max-width: 480px) {{
+            h1 {{
+                font-size: 1.8em;
+                letter-spacing: 2px;
+            }}
+
+            .subtitle {{
+                font-size: 0.95em;
+            }}
+
+            .card-title {{
+                font-size: 1em;
+            }}
+
+            .card-bullets li {{
+                font-size: 0.85em;
             }}
         }}
     </style>
@@ -1166,30 +1228,28 @@ def generate_html(domains_articles):
                     <span class="domain-desc">{config['desc']}</span>
                 </div>
             </div>
-            <ul class="article-list">
+            <div class="cards-grid">
 """
         if articles:
             for article in articles[:3]:
                 # Normalize all text to fix encoding issues
                 title = normalize_characters(article['title'])
                 explanation = normalize_characters(article.get('explanation', article['summary']))
-                html += f"""                <li class="article-item">
-                    <div class="article-header">
-                        <a href="{article['url']}" class="article-title" target="_blank">
-                            <span class="bullet">&#8226;</span>{title}
-                        </a>
-                        <span class="article-source">{article['source']}</span>
-                    </div>
-                    <div class="article-explanation">
-                        {explanation}
-                    </div>
-                </li>
+                # Extract bullet points from explanation HTML
+                bullets_html = explanation
+                html += f"""                <article class="card">
+                    <span class="card-source">{article['source']}</span>
+                    <a href="{article['url']}" class="card-title" target="_blank">{title}</a>
+                    <ul class="card-bullets">
+                        {bullets_html.replace('<ul class="summary-bullets">', '').replace('</ul>', '').replace('<li>', '<li>').replace('</li>', '</li>')}
+                    </ul>
+                </article>
 """
         else:
-            html += """                <li class="no-articles">No articles available in this category today. Check back tomorrow!</li>
+            html += """                <div class="no-articles">No articles available in this category today. Check back tomorrow!</div>
 """
 
-        html += """            </ul>
+        html += """            </div>
         </section>
 """
 

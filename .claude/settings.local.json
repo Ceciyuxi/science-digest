@@ -16,7 +16,9 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(git fetch:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git tag:*)",
+      "Bash(open:*)"
     ]
   }
 }
