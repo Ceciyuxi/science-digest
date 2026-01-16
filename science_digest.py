@@ -11,12 +11,16 @@ Only uses open access sources - no paywalled content from Nature, Science, etc.
 
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import os
 import sys
 import webbrowser
 import time
 import re
+
+# Mountain Time is UTC-7 (MST) or UTC-6 (MDT during daylight saving)
+# Using UTC-7 as default (standard time)
+MOUNTAIN_TZ = timezone(timedelta(hours=-7))
 
 # Configuration
 OUTPUT_FILE = "science_digest.html"
@@ -191,66 +195,63 @@ def classify_domain(title, summary):
 
 
 def normalize_characters(text):
-    """Convert smart quotes and special characters to ASCII equivalents."""
+    """Convert special characters to HTML entities to avoid encoding issues."""
     if not text:
         return text
 
-    # Fix mojibake (UTF-8 incorrectly decoded) - must come first
-    mojibake_fixes = [
-        ('â€™', "'"),     # Right single quote
-        ('â€˜', "'"),     # Left single quote
-        ('â€œ', '"'),     # Left double quote
-        ('â€', '"'),      # Right double quote (partial)
-        ('â€"', '-'),     # Em dash
-        ('â€"', '-'),     # En dash
-        ('â€¦', '...'),   # Ellipsis
+    # STEP 1: Fix mojibake patterns using Unicode escapes (safe for any encoding)
+    # These are UTF-8 bytes misinterpreted as Latin-1/Windows-1252
+    mojibake_patterns = [
+        ("\u00e2\u0080\u0099", "&#39;"),  # â€™ -> '
+        ("\u00e2\u0080\u0098", "&#39;"),  # â€˜ -> '
+        ("\u00e2\u0080\u009c", "&quot;"), # â€œ -> "
+        ("\u00e2\u0080\u009d", "&quot;"), # â€ -> "
+        ("\u00e2\u0080\u0093", "-"),      # â€" -> -
+        ("\u00e2\u0080\u0094", "-"),      # â€" -> -
+        ("\u00e2\u0080\u00a6", "..."),    # â€¦ -> ...
+        ("\u00c2\u00a0", " "),            # Â  -> space
     ]
-    for bad, good in mojibake_fixes:
+
+    for bad, good in mojibake_patterns:
         text = text.replace(bad, good)
 
-    # Clean up any remaining â characters from partial mojibake
-    text = re.sub(r'â€[™˜œ""\u0099\u009c\u009d]?', "'", text)
-    # Handle case where â appears alone (partial corruption, e.g., "Dwarf's" -> "Dwarfâs")
-    text = re.sub(r'(\w)â(\w)', r"\1'\2", text)  # letter-â-letter -> letter-'-letter
-    text = re.sub(r'â', "'", text)  # Any remaining â -> apostrophe
+    # STEP 2: Use regex to catch remaining corrupted patterns
+    # The â character (U+00E2) followed by special bytes
+    text = re.sub(r'\u00e2\u0080.', "&#39;", text)
+    text = re.sub(r'\u00e2.', "&#39;", text)
+    # Euro sign followed by space and letter (corrupted apostrophe)
+    text = re.sub(r'\u20ac\s*(?=\w)', "&#39;", text)
+    text = re.sub(r"'\u20ac\s*", "&#39;", text)
 
-    # Smart quotes and apostrophes (proper Unicode)
-    char_map = {
-        '\u2018': "'",   # Left single quote '
-        '\u2019': "'",   # Right single quote '
-        '\u201C': '"',   # Left double quote "
-        '\u201D': '"',   # Right double quote "
-        '\u2032': "'",   # Prime ′
-        '\u2033': '"',   # Double prime ″
-        '\u0060': "'",   # Grave accent `
-        '\u00B4': "'",   # Acute accent ´
-        ''': "'",        # Direct left single quote
-        ''': "'",        # Direct right single quote
-        '"': '"',        # Direct left double quote
-        '"': '"',        # Direct right double quote
-        # Dashes
-        '\u2013': '-',   # En dash –
-        '\u2014': '-',   # Em dash —
-        '\u2015': '-',   # Horizontal bar ―
-        '\u2012': '-',   # Figure dash ‒
-        '–': '-',        # Direct en dash
-        '—': '-',        # Direct em dash
-        # Spaces
-        '\u00A0': ' ',   # Non-breaking space
-        '\u2003': ' ',   # Em space
-        '\u2002': ' ',   # En space
-        '\u2009': ' ',   # Thin space
-        # Other
-        '\u2026': '...',  # Ellipsis …
-        '…': '...',       # Direct ellipsis
-        '\u00AB': '"',    # Left guillemet «
-        '\u00BB': '"',    # Right guillemet »
-        '\u201A': "'",    # Single low quote ‚
-        '\u201E': '"',    # Double low quote „
+    # STEP 3: Convert Unicode smart quotes to HTML entities
+    unicode_map = {
+        '\u2018': "&#39;",   # Left single quote '
+        '\u2019': "&#39;",   # Right single quote '
+        '\u201C': "&quot;",  # Left double quote "
+        '\u201D': "&quot;",  # Right double quote "
+        '\u2032': "&#39;",   # Prime
+        '\u2033': "&quot;",  # Double prime
+        '\u0060': "&#39;",   # Grave accent
+        '\u00B4': "&#39;",   # Acute accent
+        '\u2013': "-",       # En dash
+        '\u2014': "-",       # Em dash
+        '\u2015': "-",       # Horizontal bar
+        '\u2012': "-",       # Figure dash
+        '\u00A0': " ",       # Non-breaking space
+        '\u2026': "...",     # Ellipsis
+        '\u00AB': "&quot;",  # Left guillemet
+        '\u00BB': "&quot;",  # Right guillemet
+        '\u201A': "&#39;",   # Single low quote
+        '\u201E': "&quot;",  # Double low quote
+        '\u00e2': "&#39;",   # Standalone â (from corruption)
     }
 
-    for char, replacement in char_map.items():
+    for char, replacement in unicode_map.items():
         text = text.replace(char, replacement)
+
+    # STEP 4: Final cleanup with regex for any remaining special quotes
+    text = re.sub(r'[\u2018\u2019\u201a\u201b]', "&#39;", text)
+    text = re.sub(r'[\u201c\u201d\u201e\u201f]', "&quot;", text)
 
     return text
 
@@ -862,8 +863,10 @@ def enrich_with_explanations(articles):
 
 def generate_html(domains_articles):
     """Generate a clean, readable HTML page organized by domain."""
-    today = datetime.now().strftime("%A, %B %d, %Y")
-    update_time = datetime.now().strftime("%I:%M %p")
+    # Use Mountain Time for display
+    now_mt = datetime.now(MOUNTAIN_TZ)
+    today = now_mt.strftime("%A, %B %d, %Y")
+    update_time = now_mt.strftime("%I:%M %p") + " MT"
 
     domain_config = {
         "Astronomy": {"icon": "&#127776;", "class": "astronomy", "desc": "Stars, Planets & Space"},
