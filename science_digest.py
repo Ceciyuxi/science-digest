@@ -1825,7 +1825,6 @@ def generate_html(domains_articles, featured_media=None):
                 # Normalize all text to fix encoding issues
                 title = normalize_characters(article['title'])
                 explanation = normalize_characters(article.get('explanation', article['summary']))
-                key_stat = normalize_characters(article.get('key_stat', '')) if article.get('key_stat') else None
                 read_time = article.get('read_time', 2)
                 image_url = article.get('image')
 
@@ -1847,15 +1846,7 @@ def generate_html(domains_articles, featured_media=None):
                             <span class="card-read-time">{read_time} min read</span>
                         </div>
                         <a href="{article['url']}" class="card-title" target="_blank">{title}</a>
-"""
-                # Add key statistic if available
-                if key_stat:
-                    card_html += f"""                        <div class="card-stat">
-                            <span class="stat-icon">&#128200;</span>
-                            <span class="stat-text">{key_stat}</span>
-                        </div>
-"""
-                card_html += f"""                        <ul class="card-bullets">
+                        <ul class="card-bullets">
                             {bullets_html.replace('<ul class="summary-bullets">', '').replace('</ul>', '').replace('<li>', '<li>').replace('</li>', '</li>')}
                         </ul>
                     </div>
