@@ -441,10 +441,10 @@ def simplify_text(text):
 
 
 def fetch_article_content(url):
-    """Fetch the main content from an article page, checking for paywalls."""
+    """Fetch the main content and image from an article page, checking for paywalls."""
     # Skip known paywalled domains
     if is_paywalled_url(url):
-        return ""
+        return {"content": "", "image": None}
 
     try:
         response = requests.get(url, headers=HEADERS, timeout=15)
@@ -453,9 +453,12 @@ def fetch_article_content(url):
 
         # Check for paywall
         if check_for_paywall(soup, url):
-            return ""
+            return {"content": "", "image": None}
 
-        # Remove unwanted elements
+        # Extract article image
+        image_url = extract_article_image(soup, url)
+
+        # Remove unwanted elements for content extraction
         for elem in soup.select("script, style, nav, header, footer, aside, .ad, .advertisement"):
             elem.decompose()
 
@@ -491,10 +494,124 @@ def fetch_article_content(url):
             good_paragraphs = [p for p in paragraphs if len(p.get_text(strip=True)) > 50]
             content = " ".join(p.get_text(strip=True) for p in good_paragraphs[:8])
 
-        return content[:2500]  # Get more content for better explanations
+        return {"content": content[:2500], "image": image_url}
 
     except Exception:
-        return ""
+        return {"content": "", "image": None}
+
+
+def extract_article_image(soup, url):
+    """Extract the main image from an article page."""
+    image_url = None
+
+    # Try Open Graph image first (most reliable for article thumbnails)
+    og_image = soup.find("meta", property="og:image")
+    if og_image and og_image.get("content"):
+        image_url = og_image.get("content")
+        if image_url and not image_url.startswith("http"):
+            image_url = None  # Skip relative URLs for og:image
+
+    # Try Twitter card image
+    if not image_url:
+        twitter_image = soup.find("meta", attrs={"name": "twitter:image"})
+        if twitter_image and twitter_image.get("content"):
+            image_url = twitter_image.get("content")
+
+    # Try schema.org image
+    if not image_url:
+        schema_image = soup.find("meta", attrs={"itemprop": "image"})
+        if schema_image and schema_image.get("content"):
+            image_url = schema_image.get("content")
+
+    # Try common article image selectors
+    if not image_url:
+        image_selectors = [
+            "article img",
+            ".article-image img",
+            ".featured-image img",
+            ".post-thumbnail img",
+            ".entry-image img",
+            "#leadimage img",  # ScienceDaily
+            ".lead-image img",
+            "figure img",
+            ".hero-image img",
+            "main img",
+        ]
+        for selector in image_selectors:
+            img = soup.select_one(selector)
+            if img:
+                src = img.get("src") or img.get("data-src") or img.get("data-lazy-src")
+                if src and len(src) > 10:
+                    # Skip tiny icons and tracking pixels
+                    if not any(skip in src.lower() for skip in ["icon", "logo", "avatar", "1x1", "pixel"]):
+                        image_url = src
+                        break
+
+    # Make relative URLs absolute
+    if image_url and not image_url.startswith("http"):
+        base = get_base_url(url)
+        if base:
+            image_url = base + image_url if image_url.startswith("/") else base + "/" + image_url
+
+    return image_url
+
+
+def extract_key_statistic(content, title):
+    """Extract an interesting statistic or number from the article content."""
+    if not content:
+        return None
+
+    text = content + " " + title
+
+    # Patterns for interesting statistics (number + context)
+    stat_patterns = [
+        # Percentages
+        r'(\d+(?:\.\d+)?)\s*(?:percent|%)\s+(?:of\s+)?([a-zA-Z\s]{5,40})',
+        # Times/multiples
+        r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:times?|x)\s+(?:more\s+|less\s+|faster\s+|slower\s+)?([a-zA-Z\s]{3,30})',
+        # Large numbers with units
+        r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*(million|billion|trillion|thousand)\s+([a-zA-Z\s]{3,30})',
+        # Years/age
+        r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:year|million year|billion year)s?\s+(?:old|ago)',
+        # Distance/size with units
+        r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*(light[- ]?years?|miles?|kilometers?|km|meters?|feet)\s+(?:away|from|across|wide|long)',
+        # Temperature
+        r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:degrees?|°)\s*(?:Celsius|Fahrenheit|C|F)',
+        # Species/discoveries count
+        r'(?:more than\s+|over\s+|about\s+)?(\d+(?:,\d{3})*)\s+(?:new\s+)?(?:species|discoveries|stars?|planets?|galaxies)',
+    ]
+
+    for pattern in stat_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            full_match = match.group(0).strip()
+            # Clean up and format
+            full_match = re.sub(r'\s+', ' ', full_match)
+            if len(full_match) < 60:  # Keep it concise
+                return full_match
+
+    # Fallback: find any sentence with a notable number
+    sentences = re.split(r'[.!?]', text)
+    for sent in sentences:
+        # Look for sentences with large numbers or percentages
+        if re.search(r'\b\d{2,}(?:,\d{3})*\b', sent) or re.search(r'\d+\s*%', sent):
+            sent = sent.strip()
+            if 20 < len(sent) < 80:
+                return sent
+
+    return None
+
+
+def calculate_reading_time(content):
+    """Calculate estimated reading time in minutes."""
+    if not content:
+        return 1
+
+    # Average reading speed is about 200-250 words per minute
+    word_count = len(content.split())
+    minutes = max(1, round(word_count / 200))
+
+    return minutes
 
 
 def is_similar_to_title(sentence, title):
@@ -952,7 +1069,7 @@ def fetch_domain_articles(domain, urls):
 
 
 def enrich_with_explanations(articles):
-    """Add simple explanations to articles by fetching more content."""
+    """Add simple explanations, images, stats, and reading time to articles."""
     enriched = []
 
     for article in articles:
@@ -963,10 +1080,13 @@ def enrich_with_explanations(articles):
             print(f"        Skipping (paywalled source)")
             continue
 
-        # Try to fetch full article content
-        full_content = ""
+        # Try to fetch full article content and image
+        article_data = {"content": "", "image": None}
         if article.get("url"):
-            full_content = fetch_article_content(article["url"])
+            article_data = fetch_article_content(article["url"])
+
+        full_content = article_data.get("content", "")
+        article_image = article_data.get("image")
 
         # If we got no content, the article might be paywalled
         if not full_content and article["summary"] == article["title"]:
@@ -980,7 +1100,16 @@ def enrich_with_explanations(articles):
             full_content
         )
 
+        # Extract key statistic
+        key_stat = extract_key_statistic(full_content, article["title"])
+
+        # Calculate reading time
+        read_time = calculate_reading_time(full_content)
+
         article["explanation"] = explanation
+        article["image"] = article_image
+        article["key_stat"] = key_stat
+        article["read_time"] = read_time
         enriched.append(article)
 
     return enriched
@@ -1137,12 +1266,19 @@ def generate_html(domains_articles, featured_media=None):
             background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 20px;
-            padding: 28px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
             position: relative;
             overflow: hidden;
+        }}
+
+        .card-with-image {{
+            padding: 0;
+        }}
+
+        .card:not(.card-with-image) {{
+            padding: 28px;
         }}
 
         .card::before {{
@@ -1155,6 +1291,7 @@ def generate_html(domains_articles, featured_media=None):
             background: linear-gradient(90deg, #64ffda, #7b68ee);
             opacity: 0;
             transition: opacity 0.3s ease;
+            z-index: 1;
         }}
 
         .card:hover {{
@@ -1168,6 +1305,38 @@ def generate_html(domains_articles, featured_media=None):
             opacity: 1;
         }}
 
+        .card-image-wrapper {{
+            width: 100%;
+            height: 180px;
+            overflow: hidden;
+            position: relative;
+        }}
+
+        .card-image {{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }}
+
+        .card:hover .card-image {{
+            transform: scale(1.05);
+        }}
+
+        .card-content {{
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }}
+
+        .card-meta {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }}
+
         .card-source {{
             font-size: 0.7em;
             color: #64ffda;
@@ -1175,10 +1344,18 @@ def generate_html(domains_articles, featured_media=None):
             padding: 4px 12px;
             border-radius: 20px;
             display: inline-block;
-            margin-bottom: 16px;
             font-weight: 500;
             letter-spacing: 0.5px;
             text-transform: uppercase;
+        }}
+
+        .card-read-time {{
+            font-size: 0.7em;
+            color: #8892b0;
+            background: rgba(136, 146, 176, 0.15);
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-weight: 500;
         }}
 
         .card-title {{
@@ -1187,13 +1364,36 @@ def generate_html(domains_articles, featured_media=None):
             color: #ffffff;
             text-decoration: none;
             display: block;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             line-height: 1.5;
             transition: color 0.3s ease;
         }}
 
         .card-title:hover {{
             color: #64ffda;
+        }}
+
+        .card-stat {{
+            background: linear-gradient(135deg, rgba(123, 104, 238, 0.15), rgba(100, 255, 218, 0.1));
+            border: 1px solid rgba(123, 104, 238, 0.3);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }}
+
+        .stat-icon {{
+            font-size: 1.2em;
+            flex-shrink: 0;
+        }}
+
+        .stat-text {{
+            font-size: 0.85em;
+            color: #ccd6f6;
+            font-weight: 500;
+            line-height: 1.4;
         }}
 
         .card-bullets {{
@@ -1466,8 +1666,21 @@ def generate_html(domains_articles, featured_media=None):
                 gap: 20px;
             }}
 
-            .card {{
+            .card:not(.card-with-image) {{
                 padding: 24px;
+            }}
+
+            .card-content {{
+                padding: 20px;
+            }}
+
+            .card-image-wrapper {{
+                height: 200px;
+            }}
+
+            .card-meta {{
+                flex-wrap: wrap;
+                gap: 8px;
             }}
 
             .domain-header, .featured-header {{
@@ -1612,16 +1825,43 @@ def generate_html(domains_articles, featured_media=None):
                 # Normalize all text to fix encoding issues
                 title = normalize_characters(article['title'])
                 explanation = normalize_characters(article.get('explanation', article['summary']))
+                key_stat = normalize_characters(article.get('key_stat', '')) if article.get('key_stat') else None
+                read_time = article.get('read_time', 2)
+                image_url = article.get('image')
+
                 # Extract bullet points from explanation HTML
                 bullets_html = explanation
-                html += f"""                <article class="card">
-                    <span class="card-source">{article['source']}</span>
-                    <a href="{article['url']}" class="card-title" target="_blank">{title}</a>
-                    <ul class="card-bullets">
-                        {bullets_html.replace('<ul class="summary-bullets">', '').replace('</ul>', '').replace('<li>', '<li>').replace('</li>', '</li>')}
-                    </ul>
+
+                # Build card HTML with optional image and key stat
+                card_html = f"""                <article class="card{'  card-with-image' if image_url else ''}">
+"""
+                # Add image if available
+                if image_url:
+                    card_html += f"""                    <div class="card-image-wrapper">
+                        <img class="card-image" src="{image_url}" alt="{title}" loading="lazy" onerror="this.parentElement.style.display='none'">
+                    </div>
+"""
+                card_html += f"""                    <div class="card-content">
+                        <div class="card-meta">
+                            <span class="card-source">{article['source']}</span>
+                            <span class="card-read-time">{read_time} min read</span>
+                        </div>
+                        <a href="{article['url']}" class="card-title" target="_blank">{title}</a>
+"""
+                # Add key statistic if available
+                if key_stat:
+                    card_html += f"""                        <div class="card-stat">
+                            <span class="stat-icon">&#128200;</span>
+                            <span class="stat-text">{key_stat}</span>
+                        </div>
+"""
+                card_html += f"""                        <ul class="card-bullets">
+                            {bullets_html.replace('<ul class="summary-bullets">', '').replace('</ul>', '').replace('<li>', '<li>').replace('</li>', '</li>')}
+                        </ul>
+                    </div>
                 </article>
 """
+                html += card_html
         else:
             html += """                <div class="no-articles">No articles available in this category today. Check back tomorrow!</div>
 """
