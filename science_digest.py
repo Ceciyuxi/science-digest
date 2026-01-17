@@ -25,6 +25,18 @@ MOUNTAIN_TZ = timezone(timedelta(hours=-7))
 # Configuration
 OUTPUT_FILE = "science_digest.html"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+
+# NASA API (DEMO_KEY has limited requests, get free key at api.nasa.gov)
+NASA_API_KEY = "DEMO_KEY"
+NASA_APOD_URL = "https://api.nasa.gov/planetary/apod"
+
+# Nature/Science RSS Feeds with images
+NATURE_RSS_FEEDS = [
+    # Smithsonian has great nature/science content with images
+    "https://www.smithsonianmag.com/rss/science-nature/",
+    # BBC Science & Environment
+    "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+]
 HEADERS = {
     "User-Agent": USER_AGENT,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -136,6 +148,119 @@ DOMAIN_URLS = {
         "https://www.noaa.gov/news-release",
     ]
 }
+
+
+def fetch_nasa_apod():
+    """Fetch NASA Astronomy Picture of the Day."""
+    try:
+        params = {"api_key": NASA_API_KEY}
+        response = requests.get(NASA_APOD_URL, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        return {
+            "title": data.get("title", "NASA Image of the Day"),
+            "explanation": data.get("explanation", "")[:300] + "..." if len(data.get("explanation", "")) > 300 else data.get("explanation", ""),
+            "url": data.get("hdurl") or data.get("url", ""),
+            "media_type": data.get("media_type", "image"),  # 'image' or 'video'
+            "date": data.get("date", ""),
+            "copyright": data.get("copyright", "NASA"),
+        }
+    except Exception as e:
+        print(f"    Warning: Could not fetch NASA APOD: {e}")
+        return None
+
+
+def fetch_nature_feeds():
+    """Fetch nature/science RSS feed items with images from various sources."""
+    items = []
+
+    for feed_url in NATURE_RSS_FEEDS:
+        try:
+            response = requests.get(feed_url, headers=HEADERS, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "xml")
+
+            # Determine source for badge
+            if "smithsonian" in feed_url:
+                source = "Smithsonian"
+            elif "bbc" in feed_url:
+                source = "BBC Science"
+            elif "sciam" in feed_url or "scientificamerican" in feed_url:
+                source = "Scientific American"
+            else:
+                source = "Nature News"
+
+            for item in soup.find_all("item")[:3]:  # Get top 3 from each feed
+                title = item.find("title")
+                link = item.find("link")
+                description = item.find("description")
+
+                # Try to find image in media:content or enclosure
+                image_url = None
+
+                # Check media:content (most common for images)
+                media = item.find("media:content")
+                if media and media.get("url"):
+                    image_url = media.get("url")
+
+                # Check media:thumbnail
+                if not image_url:
+                    media = item.find("media:thumbnail")
+                    if media and media.get("url"):
+                        image_url = media.get("url")
+
+                # Check enclosure
+                if not image_url:
+                    enclosure = item.find("enclosure")
+                    if enclosure and enclosure.get("url"):
+                        enc_type = enclosure.get("type", "")
+                        if "image" in enc_type or enc_type == "":
+                            image_url = enclosure.get("url")
+
+                # Try to extract image from description HTML
+                if not image_url and description:
+                    desc_text = description.get_text() if hasattr(description, 'get_text') else str(description.string or "")
+                    desc_soup = BeautifulSoup(desc_text, "html.parser")
+                    img = desc_soup.find("img")
+                    if img and img.get("src"):
+                        image_url = img.get("src")
+
+                # Get link text (handle both text and CDATA)
+                link_url = ""
+                if link:
+                    link_url = link.get_text(strip=True) if hasattr(link, 'get_text') else str(link.string or "")
+
+                if title:
+                    title_text = title.get_text(strip=True) if hasattr(title, 'get_text') else str(title.string or "")
+                    desc_text = ""
+                    if description:
+                        desc_text = description.get_text(strip=True) if hasattr(description, 'get_text') else str(description.string or "")
+
+                    items.append({
+                        "title": title_text,
+                        "url": link_url,
+                        "image": image_url,
+                        "description": desc_text[:150] + "..." if len(desc_text) > 150 else desc_text,
+                        "source": source,
+                    })
+
+        except Exception as e:
+            print(f"    Warning: Could not fetch feed {feed_url}: {e}")
+            continue
+
+    # Remove duplicates based on title, prioritize items with images
+    seen_titles = set()
+    unique_items = []
+    items_with_images = [i for i in items if i.get("image")]
+    items_without_images = [i for i in items if not i.get("image")]
+
+    for item in items_with_images + items_without_images:
+        if item["title"] not in seen_titles:
+            seen_titles.add(item["title"])
+            unique_items.append(item)
+
+    return unique_items[:4]
 
 
 def is_paywalled_url(url):
@@ -861,12 +986,16 @@ def enrich_with_explanations(articles):
     return enriched
 
 
-def generate_html(domains_articles):
+def generate_html(domains_articles, featured_media=None):
     """Generate a clean, readable HTML page with tile/card-based layout."""
     # Use Mountain Time for display
     now_mt = datetime.now(MOUNTAIN_TZ)
     today = now_mt.strftime("%A, %B %d, %Y")
     update_time = now_mt.strftime("%I:%M %p") + " MT"
+
+    # Default featured_media structure
+    if featured_media is None:
+        featured_media = {"nasa": None, "natgeo": []}
 
     domain_config = {
         "Astronomy": {"icon": "&#127776;", "class": "astronomy", "desc": "Stars, Planets & Space"},
@@ -1144,10 +1273,181 @@ def generate_html(domains_articles):
             box-shadow: 0 15px 40px rgba(123, 104, 238, 0.4);
         }}
 
+        /* Featured Media Section */
+        .featured-section {{
+            margin-bottom: 60px;
+        }}
+
+        .featured-header {{
+            display: flex;
+            align-items: center;
+            margin-bottom: 28px;
+            padding-left: 8px;
+        }}
+
+        .featured-icon {{
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            font-size: 1.8em;
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }}
+
+        .featured-title-group h2 {{
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }}
+
+        .featured-desc {{
+            font-size: 0.9em;
+            color: #8892b0;
+        }}
+
+        .featured-grid {{
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 24px;
+        }}
+
+        .nasa-card {{
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }}
+
+        .nasa-card:hover {{
+            transform: translateY(-5px);
+            border-color: rgba(255, 107, 107, 0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }}
+
+        .nasa-media {{
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }}
+
+        .nasa-media-video {{
+            width: 100%;
+            height: 300px;
+            border: none;
+        }}
+
+        .nasa-content {{
+            padding: 24px;
+        }}
+
+        .nasa-badge {{
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7em;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }}
+
+        .nasa-title {{
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }}
+
+        .nasa-description {{
+            font-size: 0.9em;
+            color: #a8b2d1;
+            line-height: 1.6;
+        }}
+
+        .nasa-credit {{
+            margin-top: 12px;
+            font-size: 0.75em;
+            color: #5a6a8a;
+        }}
+
+        .natgeo-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }}
+
+        .natgeo-card {{
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }}
+
+        .natgeo-card:hover {{
+            transform: translateY(-4px);
+            border-color: rgba(254, 202, 87, 0.3);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }}
+
+        .natgeo-image {{
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }}
+
+        .natgeo-content {{
+            padding: 14px;
+        }}
+
+        .natgeo-badge {{
+            display: inline-block;
+            background: linear-gradient(135deg, #feca57, #ff9f43);
+            color: #1a1a2e;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.6em;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }}
+
+        .natgeo-title {{
+            font-size: 0.85em;
+            font-weight: 500;
+            color: #ffffff;
+            text-decoration: none;
+            display: block;
+            line-height: 1.4;
+            transition: color 0.3s ease;
+        }}
+
+        .natgeo-title:hover {{
+            color: #feca57;
+        }}
+
         /* Responsive Design */
         @media (max-width: 1200px) {{
             .cards-grid {{
                 grid-template-columns: repeat(2, 1fr);
+            }}
+
+            .featured-grid {{
+                grid-template-columns: 1fr;
+            }}
+
+            .natgeo-grid {{
+                grid-template-columns: repeat(4, 1fr);
             }}
         }}
 
@@ -1170,18 +1470,26 @@ def generate_html(domains_articles):
                 padding: 24px;
             }}
 
-            .domain-header {{
+            .domain-header, .featured-header {{
                 padding-left: 0;
             }}
 
-            .domain-icon {{
+            .domain-icon, .featured-icon {{
                 width: 48px;
                 height: 48px;
                 font-size: 1.5em;
             }}
 
-            .domain-title-group h2 {{
+            .domain-title-group h2, .featured-title-group h2 {{
                 font-size: 1.3em;
+            }}
+
+            .natgeo-grid {{
+                grid-template-columns: repeat(2, 1fr);
+            }}
+
+            .nasa-media {{
+                height: 220px;
             }}
         }}
 
@@ -1202,6 +1510,14 @@ def generate_html(domains_articles):
             .card-bullets li {{
                 font-size: 0.85em;
             }}
+
+            .natgeo-grid {{
+                grid-template-columns: 1fr;
+            }}
+
+            .nasa-title {{
+                font-size: 1.1em;
+            }}
         }}
     </style>
 </head>
@@ -1213,6 +1529,67 @@ def generate_html(domains_articles):
             <p class="date">{today} &bull; Updated at {update_time}</p>
             <span class="free-badge">100% Free &amp; Open Access Sources</span>
         </header>
+"""
+
+    # Add Featured Media Section if we have content
+    nasa = featured_media.get("nasa")
+    natgeo = featured_media.get("natgeo", [])
+
+    if nasa or natgeo:
+        html += """
+        <section class="featured-section">
+            <div class="featured-header">
+                <div class="featured-icon">&#128248;</div>
+                <div class="featured-title-group">
+                    <h2>Featured Media</h2>
+                    <span class="featured-desc">NASA Picture of the Day & Nature Photography</span>
+                </div>
+            </div>
+            <div class="featured-grid">
+"""
+        # NASA APOD Card
+        if nasa:
+            nasa_title = normalize_characters(nasa.get("title", "NASA Image of the Day"))
+            nasa_desc = normalize_characters(nasa.get("explanation", ""))
+
+            if nasa.get("media_type") == "video":
+                media_html = f'<iframe class="nasa-media-video" src="{nasa["url"]}" allowfullscreen></iframe>'
+            else:
+                media_html = f'<img class="nasa-media" src="{nasa["url"]}" alt="{nasa_title}" loading="lazy">'
+
+            html += f"""                <div class="nasa-card">
+                    {media_html}
+                    <div class="nasa-content">
+                        <span class="nasa-badge">NASA Picture of the Day</span>
+                        <h3 class="nasa-title">{nasa_title}</h3>
+                        <p class="nasa-description">{nasa_desc}</p>
+                        <p class="nasa-credit">Credit: {nasa.get("copyright", "NASA")}</p>
+                    </div>
+                </div>
+"""
+
+        # NatGeo Cards Grid
+        if natgeo:
+            html += """                <div class="natgeo-grid">
+"""
+            for item in natgeo[:4]:
+                item_title = normalize_characters(item.get("title", ""))
+                item_source = item.get("source", "Nature News")
+                # Only show items with images
+                if item.get("image"):
+                    html += f"""                    <a href="{item.get('url', '#')}" class="natgeo-card" target="_blank">
+                        <img class="natgeo-image" src="{item.get('image', '')}" alt="{item_title}" loading="lazy">
+                        <div class="natgeo-content">
+                            <span class="natgeo-badge">{item_source}</span>
+                            <span class="natgeo-title">{item_title}</span>
+                        </div>
+                    </a>
+"""
+            html += """                </div>
+"""
+
+        html += """            </div>
+        </section>
 """
 
     for domain in ["Astronomy", "Biology", "Climate"]:
@@ -1272,6 +1649,24 @@ def update_digest():
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Updating Science Digest...")
     print("  Using only FREE, open access sources (no paywalls)")
 
+    # Fetch featured media (NASA APOD and NatGeo RSS)
+    print("  Fetching featured media...")
+    print("    Fetching NASA Astronomy Picture of the Day...")
+    nasa_data = fetch_nasa_apod()
+    if nasa_data:
+        print(f"    Got NASA APOD: {nasa_data.get('title', 'Unknown')[:50]}...")
+    else:
+        print("    NASA APOD not available")
+
+    print("    Fetching nature/science RSS feeds...")
+    nature_items = fetch_nature_feeds()
+    print(f"    Found {len(nature_items)} nature items with images")
+
+    featured_media = {
+        "nasa": nasa_data,
+        "natgeo": nature_items  # Key kept as "natgeo" for backward compatibility with HTML
+    }
+
     domains_articles = {}
 
     for domain, urls in DOMAIN_URLS.items():
@@ -1286,7 +1681,7 @@ def update_digest():
         domains_articles[domain] = articles[:3]  # Keep top 3
 
     print("  Generating HTML...")
-    html = generate_html(domains_articles)
+    html = generate_html(domains_articles, featured_media=featured_media)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(script_dir, OUTPUT_FILE)

@@ -268,10 +268,181 @@
             box-shadow: 0 15px 40px rgba(123, 104, 238, 0.4);
         }
 
+        /* Featured Media Section */
+        .featured-section {
+            margin-bottom: 60px;
+        }
+
+        .featured-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 28px;
+            padding-left: 8px;
+        }
+
+        .featured-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            font-size: 1.8em;
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .featured-title-group h2 {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .featured-desc {
+            font-size: 0.9em;
+            color: #8892b0;
+        }
+
+        .featured-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 24px;
+        }
+
+        .nasa-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .nasa-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 107, 107, 0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+
+        .nasa-media {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+
+        .nasa-media-video {
+            width: 100%;
+            height: 300px;
+            border: none;
+        }
+
+        .nasa-content {
+            padding: 24px;
+        }
+
+        .nasa-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7em;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .nasa-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .nasa-description {
+            font-size: 0.9em;
+            color: #a8b2d1;
+            line-height: 1.6;
+        }
+
+        .nasa-credit {
+            margin-top: 12px;
+            font-size: 0.75em;
+            color: #5a6a8a;
+        }
+
+        .natgeo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .natgeo-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .natgeo-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(254, 202, 87, 0.3);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .natgeo-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+
+        .natgeo-content {
+            padding: 14px;
+        }
+
+        .natgeo-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #feca57, #ff9f43);
+            color: #1a1a2e;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.6em;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .natgeo-title {
+            font-size: 0.85em;
+            font-weight: 500;
+            color: #ffffff;
+            text-decoration: none;
+            display: block;
+            line-height: 1.4;
+            transition: color 0.3s ease;
+        }
+
+        .natgeo-title:hover {
+            color: #feca57;
+        }
+
         /* Responsive Design */
         @media (max-width: 1200px) {
             .cards-grid {
                 grid-template-columns: repeat(2, 1fr);
+            }
+
+            .featured-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .natgeo-grid {
+                grid-template-columns: repeat(4, 1fr);
             }
         }
 
@@ -294,18 +465,26 @@
                 padding: 24px;
             }
 
-            .domain-header {
+            .domain-header, .featured-header {
                 padding-left: 0;
             }
 
-            .domain-icon {
+            .domain-icon, .featured-icon {
                 width: 48px;
                 height: 48px;
                 font-size: 1.5em;
             }
 
-            .domain-title-group h2 {
+            .domain-title-group h2, .featured-title-group h2 {
                 font-size: 1.3em;
+            }
+
+            .natgeo-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .nasa-media {
+                height: 220px;
             }
         }
 
@@ -326,6 +505,14 @@
             .card-bullets li {
                 font-size: 0.85em;
             }
+
+            .natgeo-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nasa-title {
+                font-size: 1.1em;
+            }
         }
     </style>
 </head>
@@ -334,9 +521,60 @@
         <header>
             <h1>SCIENCE DIGEST</h1>
             <p class="subtitle">Your Daily Science News, Made Simple</p>
-            <p class="date">Friday, January 16, 2026 &bull; Updated at 02:04 PM MT</p>
+            <p class="date">Friday, January 16, 2026 &bull; Updated at 06:07 PM MT</p>
             <span class="free-badge">100% Free &amp; Open Access Sources</span>
         </header>
+
+        <section class="featured-section">
+            <div class="featured-header">
+                <div class="featured-icon">&#128248;</div>
+                <div class="featured-title-group">
+                    <h2>Featured Media</h2>
+                    <span class="featured-desc">NASA Picture of the Day & Nature Photography</span>
+                </div>
+            </div>
+            <div class="featured-grid">
+                <div class="nasa-card">
+                    <img class="nasa-media" src="https://apod.nasa.gov/apod/image/2601/NGC7023_Falk2048.jpg" alt="NGC 7023: The Iris Nebula" loading="lazy">
+                    <div class="nasa-content">
+                        <span class="nasa-badge">NASA Picture of the Day</span>
+                        <h3 class="nasa-title">NGC 7023: The Iris Nebula</h3>
+                        <p class="nasa-description">These cosmic clouds have blossomed 1,300 light-years away in the fertile starfields of the constellation Cepheus. Called the Iris Nebula, NGC 7023 is not the only nebula to evoke the imagery of flowers. Still, this deep telescopic image shows off the Iris Nebula's range of colors and symmetries embe...</p>
+                        <p class="nasa-credit">Credit: Justus Falk</p>
+                    </div>
+                </div>
+                <div class="natgeo-grid">
+                    <a href="https://www.smithsonianmag.com/science-nature/the-hidden-world-of-cold-water-corals-rises-to-the-surface-with-these-glass-sculptures-that-are-resurrecting-a-lost-craft-180988011/" class="natgeo-card" target="_blank">
+                        <img class="natgeo-image" src="https://th-thumbnailer.cdn-si-edu.com/KumMY4b7-iLe6cuOit5bsMyI0z8=/420x240/filters:focal(2880x1920:2881x1921)/https://tf-cmsv2-smithsonianmag-media.s3.amazonaws.com/filer_public/a1/05/a105664e-a9c1-46e5-b3cb-136ab1fe3f8f/alicebakerdepictingdarkwaters1.jpg" alt="The Hidden World of Cold-Water Corals Rises to the Surface With These Glass Sculptures That Are Resurrecting a Lost Craft" loading="lazy">
+                        <div class="natgeo-content">
+                            <span class="natgeo-badge">Smithsonian</span>
+                            <span class="natgeo-title">The Hidden World of Cold-Water Corals Rises to the Surface With These Glass Sculptures That Are Resurrecting a Lost Craft</span>
+                        </div>
+                    </a>
+                    <a href="https://www.smithsonianmag.com/science-nature/naked-mole-rats-prefer-low-oxygen-air-that-would-kill-most-mammals-adding-to-their-list-of-death-defying-superpowers-180987997/" class="natgeo-card" target="_blank">
+                        <img class="natgeo-image" src="https://th-thumbnailer.cdn-si-edu.com/IE5xADcWECxgCaw0dhLqoVFlOUc=/420x240/filters:focal(1572x1055:1573x1056)/https://tf-cmsv2-smithsonianmag-media.s3.amazonaws.com/filer_public/d0/05/d0056d02-9231-4656-881b-f6c184850e57/image1.jpg" alt="Naked Mole-Rats Prefer Low-Oxygen Air That Would Kill Most Mammals, Adding to Their List of Death-Defying Superpowers" loading="lazy">
+                        <div class="natgeo-content">
+                            <span class="natgeo-badge">Smithsonian</span>
+                            <span class="natgeo-title">Naked Mole-Rats Prefer Low-Oxygen Air That Would Kill Most Mammals, Adding to Their List of Death-Defying Superpowers</span>
+                        </div>
+                    </a>
+                    <a href="https://www.smithsonianmag.com/science-nature/when-some-elephants-raid-farms-they-might-not-be-after-a-snack-they-could-be-looking-for-medicinal-plants-180987986/" class="natgeo-card" target="_blank">
+                        <img class="natgeo-image" src="https://th-thumbnailer.cdn-si-edu.com/9FNxxtTfJ-5CZ7DZ0uBPEcRRQME=/420x240/filters:focal(1200x800:1201x801)/https://tf-cmsv2-smithsonianmag-media.s3.amazonaws.com/filer_public/0f/76/0f76cdcd-71f9-47ca-8246-62acdea6c6ac/header-pachyderm-pharmacies.jpg" alt="When Some Elephants Raid Farms, They Might Not Be After a Snack. They Could Be Looking for Medicinal Plants" loading="lazy">
+                        <div class="natgeo-content">
+                            <span class="natgeo-badge">Smithsonian</span>
+                            <span class="natgeo-title">When Some Elephants Raid Farms, They Might Not Be After a Snack. They Could Be Looking for Medicinal Plants</span>
+                        </div>
+                    </a>
+                    <a href="https://www.bbc.com/news/articles/c9qpx2qqeq7o?at_medium=RSS&at_campaign=rss" class="natgeo-card" target="_blank">
+                        <img class="natgeo-image" src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/7989/live/c8e61930-f24a-11f0-b385-5f48925de19a.jpg" alt="Landscape beneath Antarctica's icy surface revealed in unprecedented detail" loading="lazy">
+                        <div class="natgeo-content">
+                            <span class="natgeo-badge">BBC Science</span>
+                            <span class="natgeo-title">Landscape beneath Antarctica's icy surface revealed in unprecedented detail</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </section>
 
         <section class="domain-section">
             <div class="domain-header">
