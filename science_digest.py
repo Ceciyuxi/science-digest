@@ -1258,7 +1258,7 @@ def generate_html(domains_articles, featured_media=None):
         /* Card Grid Layout */
         .cards-grid {{
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 24px;
         }}
 
@@ -1637,11 +1637,13 @@ def generate_html(domains_articles, featured_media=None):
         }}
 
         /* Responsive Design */
-        @media (max-width: 1200px) {{
+        @media (max-width: 1400px) {{
             .cards-grid {{
                 grid-template-columns: repeat(2, 1fr);
             }}
+        }}
 
+        @media (max-width: 1200px) {{
             .featured-grid {{
                 grid-template-columns: 1fr;
             }}
@@ -1821,7 +1823,7 @@ def generate_html(domains_articles, featured_media=None):
             <div class="cards-grid">
 """
         if articles:
-            for article in articles[:3]:
+            for article in articles[:4]:
                 # Normalize all text to fix encoding issues
                 title = normalize_characters(article['title'])
                 explanation = normalize_characters(article.get('explanation', article['summary']))
@@ -1907,9 +1909,9 @@ def update_digest():
 
         if articles:
             print(f"    Generating simple explanations...")
-            articles = enrich_with_explanations(articles[:4])  # Process a few extra in case some fail
+            articles = enrich_with_explanations(articles[:5])  # Process a few extra in case some fail
 
-        domains_articles[domain] = articles[:3]  # Keep top 3
+        domains_articles[domain] = articles[:4]  # Keep top 4
 
     print("  Generating HTML...")
     html = generate_html(domains_articles, featured_media=featured_media)
