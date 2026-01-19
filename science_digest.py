@@ -86,14 +86,24 @@ DOMAIN_KEYWORDS = {
         "venus", "mercury", "neptune", "uranus", "milky way", "hubble", "webb",
         "iss", "international space station", "launch", "mission", "lunar"
     ],
+    "Wildlife": [
+        "animal", "wildlife", "species", "mammal", "bird", "fish", "reptile",
+        "amphibian", "insect", "predator", "prey", "endangered", "extinction",
+        "conservation", "habitat", "zoo", "safari", "migration", "behavior",
+        "wolf", "bear", "lion", "tiger", "elephant", "whale", "dolphin", "shark",
+        "eagle", "owl", "snake", "frog", "butterfly", "bee", "ant", "spider",
+        "primate", "ape", "monkey", "gorilla", "chimpanzee", "orangutan",
+        "ocean life", "marine life", "coral reef", "rainforest", "savanna",
+        "arctic animal", "polar bear", "penguin", "seal", "otter", "deer",
+        "fox", "rabbit", "squirrel", "bat", "crocodile", "turtle", "parrot"
+    ],
     "Biology": [
-        "animal", "species", "cell", "dna", "gene", "evolution", "fossil",
-        "dinosaur", "bacteria", "virus", "protein", "organism", "ecosystem",
-        "wildlife", "plant", "insect", "mammal", "bird", "fish", "marine",
-        "ocean life", "biodiversity", "extinction", "endangered", "habitat",
-        "genetics", "mutation", "enzyme", "microbe", "biology", "life form",
-        "creature", "predator", "prey", "reproduction", "anatomy", "brain",
-        "neuron", "disease", "infection", "immune", "coral", "reef", "forest"
+        "cell", "dna", "gene", "evolution", "fossil", "dinosaur", "bacteria",
+        "virus", "protein", "organism", "genetics", "mutation", "enzyme",
+        "microbe", "biology", "life form", "reproduction", "anatomy", "brain",
+        "neuron", "disease", "infection", "immune", "plant", "fungus",
+        "ecosystem", "biodiversity", "molecular", "genome", "chromosome",
+        "stem cell", "cancer", "antibiotic", "vaccine", "pathogen", "parasite"
     ],
     "Climate": [
         "climate", "weather", "temperature", "warming", "carbon", "emission",
@@ -102,7 +112,7 @@ DOMAIN_KEYWORDS = {
         "renewable", "energy", "fossil fuel", "ocean warming", "heat wave",
         "wildfire", "deforestation", "methane", "ozone", "el nino", "la nina",
         "precipitation", "rainfall", "snowfall", "permafrost", "ecosystem change",
-        "environmental", "sustainability", "conservation", "earth", "global"
+        "environmental", "sustainability", "earth", "global"
     ]
 }
 
@@ -128,6 +138,22 @@ DOMAIN_URLS = {
         "https://www.space.com/science",
         # NASA - government, always free
         "https://www.nasa.gov/news/all-news/",
+    ],
+    "Wildlife": [
+        # BBC Wildlife/Nature - excellent nature content
+        "https://www.bbc.com/news/science_and_environment",
+        # Mongabay - wildlife and conservation journalism
+        "https://news.mongabay.com/",
+        "https://news.mongabay.com/list/wildlife/",
+        # The Conversation - animals topic
+        "https://theconversation.com/us/topics/animals-702",
+        "https://theconversation.com/us/topics/wildlife-702",
+        # Smithsonian Magazine - zoo and wildlife
+        "https://www.smithsonianmag.com/science-nature/",
+        # ZME Science - animal stories
+        "https://www.zmescience.com/science/animals/",
+        # Live Science Animals
+        "https://www.livescience.com/animals",
     ],
     "Biology": [
         # Quanta Magazine - excellent biology coverage
@@ -981,6 +1007,14 @@ def get_base_url(url):
         return "https://cosmosmagazine.com"
     elif "iflscience.com" in url:
         return "https://www.iflscience.com"
+    elif "mongabay.com" in url:
+        return "https://news.mongabay.com"
+    elif "bbc.com" in url:
+        return "https://www.bbc.com"
+    elif "zmescience.com" in url:
+        return "https://www.zmescience.com"
+    elif "smithsonianmag.com" in url:
+        return "https://www.smithsonianmag.com"
     return ""
 
 
@@ -1000,6 +1034,14 @@ def get_source_name(url):
         return "Cosmos"
     elif "iflscience" in url:
         return "IFLScience"
+    elif "mongabay" in url:
+        return "Mongabay"
+    elif "bbc.com" in url:
+        return "BBC"
+    elif "zmescience" in url:
+        return "ZME Science"
+    elif "smithsonianmag" in url:
+        return "Smithsonian"
     elif "sciencedaily" in url:
         return "ScienceDaily"
     elif "phys.org" in url:
@@ -1046,6 +1088,14 @@ def fetch_domain_articles(domain, urls):
                 article_elements = soup.select("article a, h2 a, h3 a, .card-title a")
             elif "iflscience" in url:
                 article_elements = soup.select("article a, h2 a, h3 a, .card a, .article-title a")
+            elif "mongabay" in url:
+                article_elements = soup.select("article h2 a, .post-title a, h3 a, .entry-title a")
+            elif "bbc.com" in url:
+                article_elements = soup.select("article h2 a, h3 a, .media__link, a.gs-c-promo-heading")
+            elif "zmescience" in url:
+                article_elements = soup.select("article h2 a, h3 a, .entry-title a, .post-title a")
+            elif "smithsonianmag" in url:
+                article_elements = soup.select("article h2 a, h3 a, .headline a, .article-title a")
             elif "sciencedaily" in url:
                 article_elements = soup.select("#headlines a, .latest-head a, #featured a")
             elif "phys.org" in url:
@@ -1185,7 +1235,8 @@ def generate_html(domains_articles, featured_media=None):
 
     domain_config = {
         "Astronomy": {"icon": "&#127776;", "class": "astronomy", "desc": "Stars, Planets & Space"},
-        "Biology": {"icon": "&#129516;", "class": "biology", "desc": "Life & Living Things"},
+        "Wildlife": {"icon": "&#129421;", "class": "wildlife", "desc": "Animals & Nature"},
+        "Biology": {"icon": "&#129516;", "class": "biology", "desc": "Cells, DNA & Life Sciences"},
         "Climate": {"icon": "&#127758;", "class": "climate", "desc": "Weather & Environment"},
     }
 
@@ -1288,6 +1339,10 @@ def generate_html(domains_articles, featured_media=None):
 
         .astronomy-icon {{
             background: linear-gradient(135deg, #4a00e0, #8e2de2);
+        }}
+
+        .wildlife-icon {{
+            background: linear-gradient(135deg, #f57c00, #ffb300);
         }}
 
         .biology-icon {{
@@ -1866,7 +1921,7 @@ def generate_html(domains_articles, featured_media=None):
         </section>
 """
 
-    for domain in ["Astronomy", "Biology", "Climate"]:
+    for domain in ["Astronomy", "Wildlife", "Biology", "Climate"]:
         articles = domains_articles.get(domain, [])
         config = domain_config[domain]
 
@@ -1925,7 +1980,7 @@ def generate_html(domains_articles, featured_media=None):
     html += """
         <footer>
             <p>All articles from free, open access sources - no paywalls!</p>
-            <p class="sources-list">Quanta &bull; The Conversation &bull; Ars Technica &bull; MIT News &bull; Cosmos &bull; ScienceDaily &bull; Phys.org &bull; NASA &bull; Space.com</p>
+            <p class="sources-list">Quanta &bull; The Conversation &bull; Ars Technica &bull; Mongabay &bull; BBC &bull; Smithsonian &bull; ZME Science &bull; MIT News &bull; ScienceDaily &bull; NASA</p>
             <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
         </footer>
     </div>
