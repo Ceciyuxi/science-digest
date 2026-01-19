@@ -140,20 +140,11 @@ DOMAIN_URLS = {
         "https://www.nasa.gov/news/all-news/",
     ],
     "Wildlife": [
-        # BBC Wildlife/Nature - excellent nature content
+        # BBC Wildlife - excellent nature content
+        "https://www.bbc.com/news/science-environment-56837908",  # BBC Nature/Wildlife
         "https://www.bbc.com/news/science_and_environment",
-        # Mongabay - wildlife and conservation journalism
-        "https://news.mongabay.com/",
-        "https://news.mongabay.com/list/wildlife/",
-        # The Conversation - animals topic
-        "https://theconversation.com/us/topics/animals-702",
-        "https://theconversation.com/us/topics/wildlife-702",
-        # Smithsonian Magazine - zoo and wildlife
-        "https://www.smithsonianmag.com/science-nature/",
-        # ZME Science - animal stories
-        "https://www.zmescience.com/science/animals/",
-        # Live Science Animals
-        "https://www.livescience.com/animals",
+        # Smithsonian National Zoo
+        "https://nationalzoo.si.edu/news",
     ],
     "Biology": [
         # Quanta Magazine - excellent biology coverage
@@ -1015,6 +1006,8 @@ def get_base_url(url):
         return "https://www.zmescience.com"
     elif "smithsonianmag.com" in url:
         return "https://www.smithsonianmag.com"
+    elif "nationalzoo.si.edu" in url:
+        return "https://nationalzoo.si.edu"
     return ""
 
 
@@ -1042,6 +1035,8 @@ def get_source_name(url):
         return "ZME Science"
     elif "smithsonianmag" in url:
         return "Smithsonian"
+    elif "nationalzoo.si.edu" in url:
+        return "Smithsonian Zoo"
     elif "sciencedaily" in url:
         return "ScienceDaily"
     elif "phys.org" in url:
@@ -1096,6 +1091,8 @@ def fetch_domain_articles(domain, urls):
                 article_elements = soup.select("article h2 a, h3 a, .entry-title a, .post-title a")
             elif "smithsonianmag" in url:
                 article_elements = soup.select("article h2 a, h3 a, .headline a, .article-title a")
+            elif "nationalzoo.si.edu" in url:
+                article_elements = soup.select("article h2 a, h3 a, .news-item a, .card a")
             elif "sciencedaily" in url:
                 article_elements = soup.select("#headlines a, .latest-head a, #featured a")
             elif "phys.org" in url:
