@@ -110,40 +110,55 @@ DOMAIN_KEYWORDS = {
 # These sources provide full articles without paywalls
 DOMAIN_URLS = {
     "Astronomy": [
+        # Quanta Magazine - excellent in-depth science journalism
+        "https://www.quantamagazine.org/tag/astrophysics/",
+        "https://www.quantamagazine.org/tag/physics/",
+        # Ars Technica - great science coverage
+        "https://arstechnica.com/science/",
+        "https://arstechnica.com/space/",
+        # The Conversation - academic experts writing for general audience
+        "https://theconversation.com/us/topics/space-702",
+        # Inverse - science and tech news
+        "https://www.inverse.com/science",
         # ScienceDaily - completely free
         "https://www.sciencedaily.com/news/space_time/",
-        "https://www.sciencedaily.com/news/space_time/astronomy/",
         # Phys.org - free science news
         "https://phys.org/space-news/",
-        "https://phys.org/space-news/astronomy/",
-        # EurekAlert - free press releases from research institutions
-        "https://www.eurekalert.org/news-releases/browse/subject/space",
         # Space.com - mostly free
         "https://www.space.com/science",
         # NASA - government, always free
         "https://www.nasa.gov/news/all-news/",
     ],
     "Biology": [
+        # Quanta Magazine - excellent biology coverage
+        "https://www.quantamagazine.org/tag/biology/",
+        "https://www.quantamagazine.org/tag/evolution/",
+        # The Conversation - academic experts
+        "https://theconversation.com/us/topics/biology-702",
+        "https://theconversation.com/us/topics/animals-702",
+        # Ars Technica
+        "https://arstechnica.com/science/",
+        # MIT News - direct from researchers
+        "https://news.mit.edu/topic/biology",
         # ScienceDaily - completely free
         "https://www.sciencedaily.com/news/plants_animals/",
-        "https://www.sciencedaily.com/news/plants_animals/biology/",
         # Phys.org - free science news
         "https://phys.org/biology-news/",
-        "https://phys.org/biology-news/ecology/",
-        # EurekAlert - free press releases
-        "https://www.eurekalert.org/news-releases/browse/subject/biology",
         # Live Science - mostly free
         "https://www.livescience.com/animals",
     ],
     "Climate": [
+        # The Conversation - excellent climate coverage
+        "https://theconversation.com/us/topics/climate-change-702",
+        "https://theconversation.com/us/topics/environment-702",
+        # Ars Technica
+        "https://arstechnica.com/science/",
+        # IFLScience - popular science
+        "https://www.iflscience.com/environment",
         # ScienceDaily - completely free
         "https://www.sciencedaily.com/news/earth_climate/",
-        "https://www.sciencedaily.com/news/earth_climate/climate/",
         # Phys.org - free science news
         "https://phys.org/earth-news/",
-        "https://phys.org/earth-news/climate-change/",
-        # EurekAlert - free press releases
-        "https://www.eurekalert.org/news-releases/browse/subject/environment",
         # NOAA - government, always free
         "https://www.noaa.gov/news-release",
     ]
@@ -952,12 +967,40 @@ def get_base_url(url):
         return "https://www.nasa.gov"
     elif "noaa.gov" in url:
         return "https://www.noaa.gov"
+    elif "quantamagazine.org" in url:
+        return "https://www.quantamagazine.org"
+    elif "theconversation.com" in url:
+        return "https://theconversation.com"
+    elif "arstechnica.com" in url:
+        return "https://arstechnica.com"
+    elif "inverse.com" in url:
+        return "https://www.inverse.com"
+    elif "news.mit.edu" in url:
+        return "https://news.mit.edu"
+    elif "cosmosmagazine.com" in url:
+        return "https://cosmosmagazine.com"
+    elif "iflscience.com" in url:
+        return "https://www.iflscience.com"
     return ""
 
 
 def get_source_name(url):
     """Get display name for a source URL."""
-    if "sciencedaily" in url:
+    if "quantamagazine" in url:
+        return "Quanta"
+    elif "theconversation" in url:
+        return "The Conversation"
+    elif "arstechnica" in url:
+        return "Ars Technica"
+    elif "inverse.com" in url:
+        return "Inverse"
+    elif "news.mit.edu" in url:
+        return "MIT News"
+    elif "cosmosmagazine" in url:
+        return "Cosmos"
+    elif "iflscience" in url:
+        return "IFLScience"
+    elif "sciencedaily" in url:
         return "ScienceDaily"
     elif "phys.org" in url:
         return "Phys.org"
@@ -989,7 +1032,21 @@ def fetch_domain_articles(domain, urls):
             soup = BeautifulSoup(response.text, "html.parser")
 
             # Find article elements based on source
-            if "sciencedaily" in url:
+            if "quantamagazine" in url:
+                article_elements = soup.select("a.card, article a, h2 a, h3 a, .post-title a")
+            elif "theconversation" in url:
+                article_elements = soup.select("article h2 a, .article-link, h3 a, .content-list a")
+            elif "arstechnica" in url:
+                article_elements = soup.select("article h2 a, .listing h2 a, h2 a[href*='/science/']")
+            elif "inverse.com" in url:
+                article_elements = soup.select("article a, h2 a, h3 a, .card a")
+            elif "news.mit.edu" in url:
+                article_elements = soup.select(".term-page--news-item a, article h3 a, .news-item a")
+            elif "cosmosmagazine" in url:
+                article_elements = soup.select("article a, h2 a, h3 a, .card-title a")
+            elif "iflscience" in url:
+                article_elements = soup.select("article a, h2 a, h3 a, .card a, .article-title a")
+            elif "sciencedaily" in url:
                 article_elements = soup.select("#headlines a, .latest-head a, #featured a")
             elif "phys.org" in url:
                 article_elements = soup.select("article h3 a, .news-item h3 a, article a[href*='/news/']")
@@ -1868,7 +1925,7 @@ def generate_html(domains_articles, featured_media=None):
     html += """
         <footer>
             <p>All articles from free, open access sources - no paywalls!</p>
-            <p class="sources-list">ScienceDaily &bull; Phys.org &bull; EurekAlert &bull; NASA &bull; NOAA &bull; Space.com &bull; Live Science</p>
+            <p class="sources-list">Quanta &bull; The Conversation &bull; Ars Technica &bull; MIT News &bull; Cosmos &bull; ScienceDaily &bull; Phys.org &bull; NASA &bull; Space.com</p>
             <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
         </footer>
     </div>
