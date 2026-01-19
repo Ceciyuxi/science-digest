@@ -1271,6 +1271,9 @@ def generate_html(domains_articles, featured_media=None):
             flex-direction: column;
             position: relative;
             overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
         }}
 
         .card-with-image {{
@@ -1362,14 +1365,13 @@ def generate_html(domains_articles, featured_media=None):
             font-size: 1.1em;
             font-weight: 600;
             color: #ffffff;
-            text-decoration: none;
             display: block;
             margin-bottom: 16px;
             line-height: 1.5;
             transition: color 0.3s ease;
         }}
 
-        .card-title:hover {{
+        .card:hover .card-title {{
             color: #64ffda;
         }}
 
@@ -1833,8 +1835,8 @@ def generate_html(domains_articles, featured_media=None):
                 # Extract bullet points from explanation HTML
                 bullets_html = explanation
 
-                # Build card HTML with optional image and key stat
-                card_html = f"""                <article class="card{'  card-with-image' if image_url else ''}">
+                # Build card HTML with optional image - entire card is clickable
+                card_html = f"""                <a href="{article['url']}" class="card{'  card-with-image' if image_url else ''}" target="_blank">
 """
                 # Add image if available
                 if image_url:
@@ -1847,12 +1849,12 @@ def generate_html(domains_articles, featured_media=None):
                             <span class="card-source">{article['source']}</span>
                             <span class="card-read-time">{read_time} min read</span>
                         </div>
-                        <a href="{article['url']}" class="card-title" target="_blank">{title}</a>
+                        <h3 class="card-title">{title}</h3>
                         <ul class="card-bullets">
                             {bullets_html.replace('<ul class="summary-bullets">', '').replace('</ul>', '').replace('<li>', '<li>').replace('</li>', '</li>')}
                         </ul>
                     </div>
-                </article>
+                </a>
 """
                 html += card_html
         else:
