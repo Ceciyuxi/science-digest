@@ -119,8 +119,8 @@ DOMAIN_KEYWORDS = {
 # These sources provide full articles without paywalls
 DOMAIN_URLS = {
     "Wildlife": [
-        # National Geographic - world-class wildlife coverage
-        "https://www.nationalgeographic.com/animals",
+        # Live Science Animals - wildlife coverage
+        "https://www.livescience.com/animals",
     ],
     "Climate": [
         # Inside Climate News - dedicated climate journalism
@@ -2169,7 +2169,7 @@ def generate_html(domains_articles, featured_media=None):
     html += """
         <footer>
             <p>All articles from free, open access sources - no paywalls!</p>
-            <p class="sources-list">NASA &bull; National Geographic &bull; Inside Climate News</p>
+            <p class="sources-list">NASA &bull; Live Science &bull; Inside Climate News</p>
             <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
         </footer>
     </div>
