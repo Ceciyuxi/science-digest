@@ -1623,7 +1623,7 @@ def generate_html(domains_articles, featured_media=None):
 
         .featured-grid {{
             display: grid;
-            grid-template-columns: 1.5fr 1fr;
+            grid-template-columns: 1fr;
             gap: 24px;
         }}
 
@@ -1868,7 +1868,7 @@ def generate_html(domains_articles, featured_media=None):
                 <div class="featured-icon">&#128248;</div>
                 <div class="featured-title-group">
                     <h2>Featured Media</h2>
-                    <span class="featured-desc">NASA Picture of the Day & Nature Photography</span>
+                    <span class="featured-desc">NASA Astronomy Picture of the Day</span>
                 </div>
             </div>
             <div class="featured-grid">
@@ -1892,26 +1892,6 @@ def generate_html(domains_articles, featured_media=None):
                         <p class="nasa-credit">Credit: {nasa.get("copyright", "NASA")}</p>
                     </div>
                 </div>
-"""
-
-        # NatGeo Cards Grid
-        if natgeo:
-            html += """                <div class="natgeo-grid">
-"""
-            for item in natgeo[:4]:
-                item_title = normalize_characters(item.get("title", ""))
-                item_source = item.get("source", "Nature News")
-                # Only show items with images
-                if item.get("image"):
-                    html += f"""                    <a href="{item.get('url', '#')}" class="natgeo-card" target="_blank">
-                        <img class="natgeo-image" src="{item.get('image', '')}" alt="{item_title}" loading="lazy">
-                        <div class="natgeo-content">
-                            <span class="natgeo-badge">{item_source}</span>
-                            <span class="natgeo-title">{item_title}</span>
-                        </div>
-                    </a>
-"""
-            html += """                </div>
 """
 
         html += """            </div>
@@ -1993,7 +1973,7 @@ def update_digest():
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Updating Science Digest...")
     print("  Using only FREE, open access sources (no paywalls)")
 
-    # Fetch featured media (NASA APOD and NatGeo RSS)
+    # Fetch featured media (NASA APOD)
     print("  Fetching featured media...")
     print("    Fetching NASA Astronomy Picture of the Day...")
     nasa_data = fetch_nasa_apod()
@@ -2002,13 +1982,9 @@ def update_digest():
     else:
         print("    NASA APOD not available")
 
-    print("    Fetching nature/science RSS feeds...")
-    nature_items = fetch_nature_feeds()
-    print(f"    Found {len(nature_items)} nature items with images")
-
     featured_media = {
         "nasa": nasa_data,
-        "natgeo": nature_items  # Key kept as "natgeo" for backward compatibility with HTML
+        "natgeo": []  # No longer used, kept for backward compatibility
     }
 
     domains_articles = {}
