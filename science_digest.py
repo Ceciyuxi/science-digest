@@ -2129,6 +2129,9 @@ def generate_html(domains_articles, featured_media=None):
             title = clean_title(normalize_characters(article['title']))
             explanation = normalize_characters(article.get('explanation', article['summary']))
             image_url = article.get('image')
+            # Fallback wildlife image if none found
+            if not image_url:
+                image_url = "https://images.unsplash.com/photo-1474511320723-9a56873571b7?w=800"
 
             desc_text = explanation.replace('<ul class="summary-bullets">', '').replace('</ul>', '')
             desc_text = re.sub(r'<li>(.*?)</li>', r'\1 ', desc_text).strip()
@@ -2156,6 +2159,9 @@ def generate_html(domains_articles, featured_media=None):
             title = clean_title(normalize_characters(article['title']))
             explanation = normalize_characters(article.get('explanation', article['summary']))
             image_url = article.get('image')
+            # Fallback climate image if none found
+            if not image_url:
+                image_url = "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800"
 
             desc_text = explanation.replace('<ul class="summary-bullets">', '').replace('</ul>', '')
             desc_text = re.sub(r'<li>(.*?)</li>', r'\1 ', desc_text).strip()
