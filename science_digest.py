@@ -118,68 +118,13 @@ DOMAIN_KEYWORDS = {
 # FREE, open access URLs organized by domain
 # These sources provide full articles without paywalls
 DOMAIN_URLS = {
-    "Astronomy": [
-        # Quanta Magazine - excellent in-depth science journalism
-        "https://www.quantamagazine.org/tag/astrophysics/",
-        "https://www.quantamagazine.org/tag/physics/",
-        # Ars Technica - great science coverage
-        "https://arstechnica.com/science/",
-        "https://arstechnica.com/space/",
-        # The Conversation - academic experts writing for general audience
-        "https://theconversation.com/us/topics/space-702",
-        # Inverse - science and tech news
-        "https://www.inverse.com/science",
-        # ScienceDaily - completely free
-        "https://www.sciencedaily.com/news/space_time/",
-        # Phys.org - free science news
-        "https://phys.org/space-news/",
-        # Space.com - mostly free
-        "https://www.space.com/science",
-        # NASA - government, always free
-        "https://www.nasa.gov/news/all-news/",
-    ],
     "Wildlife": [
         # National Geographic - world-class wildlife coverage
         "https://www.nationalgeographic.com/animals",
-        # ScienceDaily Animals section - reliable wildlife news
-        "https://www.sciencedaily.com/news/plants_animals/animals/",
-        # Phys.org Animals
-        "https://phys.org/biology-news/plants-animals/",
-        # Live Science Animals
-        "https://www.livescience.com/animals",
-    ],
-    "Biology": [
-        # Quanta Magazine - excellent biology coverage
-        "https://www.quantamagazine.org/tag/biology/",
-        "https://www.quantamagazine.org/tag/evolution/",
-        # The Conversation - academic experts
-        "https://theconversation.com/us/topics/biology-702",
-        "https://theconversation.com/us/topics/animals-702",
-        # Ars Technica
-        "https://arstechnica.com/science/",
-        # MIT News - direct from researchers
-        "https://news.mit.edu/topic/biology",
-        # ScienceDaily - completely free
-        "https://www.sciencedaily.com/news/plants_animals/",
-        # Phys.org - free science news
-        "https://phys.org/biology-news/",
-        # Live Science - mostly free
-        "https://www.livescience.com/animals",
     ],
     "Climate": [
-        # The Conversation - excellent climate coverage
-        "https://theconversation.com/us/topics/climate-change-702",
-        "https://theconversation.com/us/topics/environment-702",
-        # Ars Technica
-        "https://arstechnica.com/science/",
-        # IFLScience - popular science
-        "https://www.iflscience.com/environment",
-        # ScienceDaily - completely free
-        "https://www.sciencedaily.com/news/earth_climate/",
-        # Phys.org - free science news
-        "https://phys.org/earth-news/",
-        # NOAA - government, always free
-        "https://www.noaa.gov/news-release",
+        # Inside Climate News - dedicated climate journalism
+        "https://insideclimatenews.org/",
     ]
 }
 
@@ -1129,6 +1074,8 @@ def get_base_url(url):
         return "https://nationalzoo.si.edu"
     elif "nationalgeographic.com" in url:
         return "https://www.nationalgeographic.com"
+    elif "insideclimatenews.org" in url:
+        return "https://insideclimatenews.org"
     return ""
 
 
@@ -1160,6 +1107,8 @@ def get_source_name(url):
         return "Smithsonian Zoo"
     elif "nationalgeographic" in url:
         return "Nat Geo"
+    elif "insideclimatenews" in url:
+        return "Inside Climate News"
     elif "sciencedaily" in url:
         return "ScienceDaily"
     elif "phys.org" in url:
@@ -1224,6 +1173,8 @@ def fetch_domain_articles(domain, urls):
                 article_elements = soup.select("article h2 a, h3 a, .news-item a, .card a")
             elif "nationalgeographic.com" in url:
                 article_elements = soup.select("article a, h2 a, h3 a, .PromoTile a, .GridPromoTile a, a[href*='/animals/']")
+            elif "insideclimatenews.org" in url:
+                article_elements = soup.select("article h2 a, h3 a, .post-title a, .entry-title a, article a[href*='/news/']")
             elif "sciencedaily" in url:
                 article_elements = soup.select("#headlines a, .latest-head a, #featured a")
             elif "phys.org" in url:
@@ -1387,10 +1338,8 @@ def generate_html(domains_articles, featured_media=None):
         featured_media = {"nasa": None, "natgeo": []}
 
     domain_config = {
-        "Astronomy": {"icon": "&#127776;", "class": "astronomy", "desc": "Stars, Planets & Space"},
-        "Wildlife": {"icon": "&#129421;", "class": "wildlife", "desc": "Animals & Nature"},
-        "Biology": {"icon": "&#129516;", "class": "biology", "desc": "Cells, DNA & Life Sciences"},
-        "Climate": {"icon": "&#127758;", "class": "climate", "desc": "Weather & Environment"},
+        "Wildlife": {"icon": "&#129421;", "class": "wildlife", "desc": "Animals & Nature", "color1": "#f57c00", "color2": "#ffb300"},
+        "Climate": {"icon": "&#127758;", "class": "climate", "desc": "Weather & Environment", "color1": "#0575e6", "color2": "#00d4ff"},
     }
 
     html = f"""<!DOCTYPE html>
@@ -2048,66 +1997,53 @@ def generate_html(domains_articles, featured_media=None):
         </section>
 """
 
-    for domain in ["Astronomy", "Wildlife", "Biology", "Climate"]:
+    # Generate featured cards for Wildlife and Climate (like NASA APOD)
+    for domain in ["Wildlife", "Climate"]:
         articles = domains_articles.get(domain, [])
         config = domain_config[domain]
 
-        html += f"""
-        <section class="domain-section">
-            <div class="domain-header">
-                <div class="domain-icon {config['class']}-icon">{config['icon']}</div>
-                <div class="domain-title-group">
+        if articles:
+            article = articles[0]  # Just one article per section
+            title = normalize_characters(article['title'])
+            explanation = normalize_characters(article.get('explanation', article['summary']))
+            image_url = article.get('image')
+
+            # Extract plain text from bullet HTML for description
+            desc_text = explanation.replace('<ul class="summary-bullets">', '').replace('</ul>', '')
+            desc_text = re.sub(r'<li>(.*?)</li>', r'\1 ', desc_text).strip()
+            # Limit description length
+            if len(desc_text) > 350:
+                desc_text = desc_text[:350] + "..."
+
+            html += f"""
+        <section class="featured-section">
+            <div class="featured-header">
+                <div class="featured-icon" style="background: linear-gradient(135deg, {config['color1']}, {config['color2']});">{config['icon']}</div>
+                <div class="featured-title-group">
                     <h2>{domain}</h2>
-                    <span class="domain-desc">{config['desc']}</span>
+                    <span class="featured-desc">{config['desc']}</span>
                 </div>
             </div>
-            <div class="cards-grid">
+            <div class="featured-grid">
+                <a href="{article['url']}" class="nasa-card" target="_blank" style="text-decoration: none; color: inherit;">
 """
-        if articles:
-            for article in articles[:2]:
-                # Normalize all text to fix encoding issues
-                title = normalize_characters(article['title'])
-                explanation = normalize_characters(article.get('explanation', article['summary']))
-                read_time = article.get('read_time', 2)
-                image_url = article.get('image')
-
-                # Extract bullet points from explanation HTML
-                bullets_html = explanation
-
-                # Build card HTML with optional image - entire card is clickable
-                card_html = f"""                <a href="{article['url']}" class="card{'  card-with-image' if image_url else ''}" target="_blank">
+            if image_url:
+                html += f"""                    <img class="nasa-media" src="{image_url}" alt="{title}" loading="lazy" onerror="this.style.display='none'">
 """
-                # Add image if available
-                if image_url:
-                    card_html += f"""                    <div class="card-image-wrapper">
-                        <img class="card-image" src="{image_url}" alt="{title}" loading="lazy" onerror="this.parentElement.style.display='none'">
-                    </div>
-"""
-                card_html += f"""                    <div class="card-content">
-                        <div class="card-meta">
-                            <span class="card-source">{article['source']}</span>
-                            <span class="card-read-time">{read_time} min read</span>
-                        </div>
-                        <h3 class="card-title">{title}</h3>
-                        <ul class="card-bullets">
-                            {bullets_html.replace('<ul class="summary-bullets">', '').replace('</ul>', '').replace('<li>', '<li>').replace('</li>', '</li>')}
-                        </ul>
+            html += f"""                    <div class="nasa-content">
+                        <span class="nasa-badge" style="background: linear-gradient(135deg, {config['color1']}, {config['color2']});">{article['source']}</span>
+                        <h3 class="nasa-title">{title}</h3>
+                        <p class="nasa-description">{desc_text}</p>
                     </div>
                 </a>
-"""
-                html += card_html
-        else:
-            html += """                <div class="no-articles">No articles available in this category today. Check back tomorrow!</div>
-"""
-
-        html += """            </div>
+            </div>
         </section>
 """
 
     html += """
         <footer>
             <p>All articles from free, open access sources - no paywalls!</p>
-            <p class="sources-list">Quanta &bull; The Conversation &bull; Ars Technica &bull; National Geographic &bull; BBC &bull; Smithsonian &bull; MIT News &bull; ScienceDaily &bull; NASA</p>
+            <p class="sources-list">NASA &bull; National Geographic &bull; Inside Climate News</p>
             <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
         </footer>
     </div>
@@ -2202,13 +2138,11 @@ def update_digest():
         print(f"    Found {len(articles)} free articles")
 
         if articles:
-            # Interleave by source BEFORE enrichment to ensure diversity
-            articles = interleave_by_source(articles)
             print(f"    Generating simple explanations...")
-            articles = enrich_with_explanations(articles[:6])  # Process more to have options
+            articles = enrich_with_explanations(articles[:3])  # Process a few in case some fail
 
-        # Select 2 articles from different sources for variety
-        domains_articles[domain] = select_diverse_articles(articles, count=2)
+        # Keep just 1 article for the featured card
+        domains_articles[domain] = articles[:1]
 
     print("  Generating HTML...")
     html = generate_html(domains_articles, featured_media=featured_media)
