@@ -141,11 +141,12 @@ DOMAIN_URLS = {
     "Wildlife": [
         # National Geographic - world-class wildlife coverage
         "https://www.nationalgeographic.com/animals",
-        # BBC Wildlife - excellent nature content
-        "https://www.bbc.com/news/science-environment-56837908",  # BBC Nature/Wildlife
-        "https://www.bbc.com/news/science_and_environment",
-        # Smithsonian National Zoo
-        "https://nationalzoo.si.edu/news",
+        # ScienceDaily Animals section - reliable wildlife news
+        "https://www.sciencedaily.com/news/plants_animals/animals/",
+        # Phys.org Animals
+        "https://phys.org/biology-news/plants-animals/",
+        # Live Science Animals
+        "https://www.livescience.com/animals",
     ],
     "Biology": [
         # Quanta Magazine - excellent biology coverage
@@ -1180,9 +1181,15 @@ def fetch_domain_articles(domain, urls):
     """Fetch articles for a specific scientific domain from free sources only."""
     articles = []
     seen_titles = set()
+    articles_per_source = {}  # Track count per source
 
     for url in urls:
-        if len(articles) >= 6:  # Fetch extra to have options after filtering
+        source_name = get_source_name(url)
+        # Limit to 2 articles per source to ensure diversity
+        if articles_per_source.get(source_name, 0) >= 2:
+            continue
+        # Stop if we have enough articles from enough sources
+        if len(articles) >= 8 and len(articles_per_source) >= 2:
             break
 
         try:
@@ -1233,7 +1240,11 @@ def fetch_domain_articles(domain, urls):
                 article_elements = soup.select("article a, h2 a, h3 a")
 
             for elem in article_elements[:15]:
-                if len(articles) >= 6:
+                # Stop if we have enough articles from enough sources
+                if len(articles) >= 8 and len(articles_per_source) >= 2:
+                    break
+                # Stop adding from this source if we hit the per-source limit
+                if articles_per_source.get(source_name, 0) >= 2:
                     break
 
                 try:
@@ -1272,19 +1283,35 @@ def fetch_domain_articles(domain, urls):
                         summary = headline
 
                     # Verify this article belongs to this domain
+                    # For Wildlife, be more lenient - animal-specific URLs should count
                     detected_domain = classify_domain(headline, summary)
                     if detected_domain != domain:
-                        continue
+                        # Allow Wildlife articles that might be classified as Biology
+                        if domain == "Wildlife" and detected_domain == "Biology":
+                            # Check if it has any wildlife keywords
+                            text_lower = (headline + " " + summary).lower()
+                            wildlife_terms = ["animal", "species", "wildlife", "mammal", "bird",
+                                            "fish", "predator", "prey", "endangered", "zoo",
+                                            "wolf", "bear", "whale", "dolphin", "shark", "elephant"]
+                            if any(term in text_lower for term in wildlife_terms):
+                                pass  # Allow it
+                            else:
+                                continue
+                        else:
+                            continue
 
                     seen_titles.add(headline)
 
+                    article_source = get_source_name(url)
                     articles.append({
                         "title": headline,
                         "summary": summary[:400] if len(summary) > 400 else summary,
                         "url": href or url,
-                        "source": get_source_name(url),
+                        "source": article_source,
                         "domain": domain
                     })
+                    # Track articles per source
+                    articles_per_source[article_source] = articles_per_source.get(article_source, 0) + 1
 
                 except Exception:
                     continue
@@ -1292,6 +1319,11 @@ def fetch_domain_articles(domain, urls):
         except Exception as e:
             print(f"    Warning: Could not fetch {url}: {e}", file=sys.stderr)
             continue
+
+    # Log source diversity
+    if articles_per_source:
+        sources = ", ".join(f"{k}:{v}" for k, v in articles_per_source.items())
+        print(f"    Sources: {sources}")
 
     return articles
 
