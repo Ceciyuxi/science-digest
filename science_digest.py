@@ -119,8 +119,8 @@ DOMAIN_KEYWORDS = {
 # These sources provide full articles without paywalls
 DOMAIN_URLS = {
     "Wildlife": [
-        # Live Science Animals - wildlife coverage
-        "https://www.livescience.com/animals",
+        # National Geographic Animals - world-class wildlife coverage with images
+        "https://www.nationalgeographic.com/animals",
     ],
     "Climate": [
         # Inside Climate News - dedicated climate journalism
@@ -1084,6 +1084,8 @@ def get_base_url(url):
         return "https://www.nationalgeographic.com"
     elif "insideclimatenews.org" in url:
         return "https://insideclimatenews.org"
+    elif "theguardian.com" in url:
+        return "https://www.theguardian.com"
     return ""
 
 
@@ -1117,6 +1119,8 @@ def get_source_name(url):
         return "Nat Geo"
     elif "insideclimatenews" in url:
         return "Inside Climate News"
+    elif "theguardian" in url:
+        return "The Guardian"
     elif "sciencedaily" in url:
         return "ScienceDaily"
     elif "phys.org" in url:
@@ -1184,6 +1188,8 @@ def fetch_domain_articles(domain, urls):
             elif "insideclimatenews.org" in url:
                 # Select links to actual news articles (exclude category links)
                 article_elements = soup.select("article h2 a, article h3 a, .entry-title a, a[href*='/news/2'], a[href*='/2026/'], a[href*='/2025/']")
+            elif "theguardian.com" in url:
+                article_elements = soup.select("a[data-link-name='article'], h3 a, .fc-item__title a, a[href*='/environment/']")
             elif "sciencedaily" in url:
                 article_elements = soup.select("#headlines a, .latest-head a, #featured a")
             elif "phys.org" in url:
@@ -2189,7 +2195,7 @@ def generate_html(domains_articles, featured_media=None):
     html += """
         <footer>
             <p>All articles from free, open access sources - no paywalls!</p>
-            <p class="sources-list">NASA &bull; Live Science &bull; Inside Climate News</p>
+            <p class="sources-list">NASA &bull; National Geographic &bull; Inside Climate News</p>
             <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
         </footer>
     </div>
