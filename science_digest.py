@@ -444,8 +444,13 @@ def fix_spacing_and_grammar(text):
     for pattern in ui_patterns:
         text = re.sub(pattern, ' ', text, flags=re.IGNORECASE)
 
+    # Fix numbers followed by letters (e.g., "1,000mountain" -> "1,000 mountain")
+    text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)
+
+    # Fix letters followed by numbers with no space (e.g., "over1,000" -> "over 1,000")
+    text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)
+
     # Fix missing space after periods before capital letters
-    # e.g., "elegans.The" -> "elegans. The"
     text = re.sub(r'\.([A-Z])', r'. \1', text)
 
     # Fix missing space after other punctuation before capital letters
@@ -454,9 +459,59 @@ def fix_spacing_and_grammar(text):
     text = re.sub(r';([A-Z])', r'; \1', text)
 
     # Fix camelCase-like concatenations (lowercase followed by uppercase)
-    # e.g., "calledCaenorhabditis" -> "called Caenorhabditis"
-    # But be careful not to break acronyms or intentional camelCase
     text = re.sub(r'([a-z])([A-Z][a-z]{2,})', r'\1 \2', text)
+
+    # Fix words ending in 's' stuck to next word (e.g., "gorillasleft" -> "gorillas left")
+    # Pattern: word ending in s followed by common verbs/words
+    text = re.sub(r'(\w{3,}s)(left|right|found|show|have|had|are|is|was|were|can|could|would|should|may|might|will|been|being|made|published|released|reported|discovered|revealed)\b', r'\1 \2', text, flags=re.IGNORECASE)
+
+    # Fix article "a" stuck to next word (e.g., "astatement" -> "a statement")
+    text = re.sub(r'\ba([bcdfghjklmnpqrstvwxyz][a-z]{2,})', r'a \1', text)
+
+    # Fix article "an" stuck to next word
+    text = re.sub(r'\ban([aeiou][a-z]{2,})', r'an \1', text)
+
+    # Fix "the" stuck to next word
+    text = re.sub(r'\bthe([a-z]{3,})', r'the \1', text)
+
+    # Fix "to" stuck to next word
+    text = re.sub(r'\bto([a-z]{3,})', r'to \1', text)
+
+    # Fix "of" stuck to next word
+    text = re.sub(r'\bof([a-z]{3,})', r'of \1', text)
+
+    # Fix "in" stuck to next word
+    text = re.sub(r'\bin([a-z]{3,})', r'in \1', text)
+
+    # Fix "on" stuck to next word
+    text = re.sub(r'\bon([a-z]{3,})', r'on \1', text)
+
+    # Fix "is" stuck to next word
+    text = re.sub(r'\bis([a-z]{3,})', r'is \1', text)
+
+    # Fix "as" stuck to next word
+    text = re.sub(r'\bas([a-z]{3,})', r'as \1', text)
+
+    # Fix "at" stuck to next word
+    text = re.sub(r'\bat([a-z]{3,})', r'at \1', text)
+
+    # Fix "by" stuck to next word
+    text = re.sub(r'\bby([a-z]{3,})', r'by \1', text)
+
+    # Fix "for" stuck to next word
+    text = re.sub(r'\bfor([a-z]{3,})', r'for \1', text)
+
+    # Fix "and" stuck to next word
+    text = re.sub(r'\band([a-z]{3,})', r'and \1', text)
+
+    # Fix "with" stuck to next word
+    text = re.sub(r'\bwith([a-z]{3,})', r'with \1', text)
+
+    # Fix "from" stuck to next word
+    text = re.sub(r'\bfrom([a-z]{3,})', r'from \1', text)
+
+    # Fix "that" stuck to next word
+    text = re.sub(r'\bthat([a-z]{3,})', r'that \1', text)
 
     # Fix common word concatenations
     common_fixes = [
@@ -468,20 +523,6 @@ def fix_spacing_and_grammar(text):
         (r'datashows', 'data shows'),
         (r'findingsshow', 'findings show'),
         (r'teamfound', 'team found'),
-        (r'thestudy', 'the study'),
-        (r'ofthe', 'of the'),
-        (r'inthe', 'in the'),
-        (r'tothe', 'to the'),
-        (r'forthe', 'for the'),
-        (r'andthe', 'and the'),
-        (r'thatthe', 'that the'),
-        (r'withthe', 'with the'),
-        (r'fromthe', 'from the'),
-        (r'onthe', 'on the'),
-        (r'bythe', 'by the'),
-        (r'isthe', 'is the'),
-        (r'asthe', 'as the'),
-        (r'atthe', 'at the'),
     ]
     for pattern, replacement in common_fixes:
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
@@ -498,7 +539,7 @@ def fix_spacing_and_grammar(text):
     # Clean up spaces before punctuation
     text = re.sub(r'\s+([.,;:!?])', r'\1', text)
 
-    # Ensure space after punctuation (except for abbreviations like "Dr." or "U.S.")
+    # Ensure space after punctuation (except for abbreviations)
     text = re.sub(r'([.,;:!?])([A-Za-z])', r'\1 \2', text)
 
     # Fix double punctuation
@@ -2071,6 +2112,37 @@ def generate_html(domains_articles, featured_media=None):
     return html
 
 
+def select_diverse_articles(articles, count=2):
+    """Select articles from different sources to ensure variety."""
+    if not articles:
+        return []
+
+    if len(articles) <= count:
+        return articles
+
+    selected = []
+    used_sources = set()
+
+    # First pass: select one article from each unique source
+    for article in articles:
+        source = article.get('source', 'Unknown')
+        if source not in used_sources:
+            selected.append(article)
+            used_sources.add(source)
+            if len(selected) >= count:
+                break
+
+    # If we still need more articles (not enough unique sources), fill with remaining
+    if len(selected) < count:
+        for article in articles:
+            if article not in selected:
+                selected.append(article)
+                if len(selected) >= count:
+                    break
+
+    return selected[:count]
+
+
 def update_digest():
     """Fetch articles and update the HTML page."""
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Updating Science Digest...")
@@ -2101,7 +2173,8 @@ def update_digest():
             print(f"    Generating simple explanations...")
             articles = enrich_with_explanations(articles[:5])  # Process a few extra in case some fail
 
-        domains_articles[domain] = articles[:2]  # Keep top 2
+        # Select 2 articles from different sources for variety
+        domains_articles[domain] = select_diverse_articles(articles, count=2)
 
     print("  Generating HTML...")
     html = generate_html(domains_articles, featured_media=featured_media)
