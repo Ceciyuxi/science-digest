@@ -51,7 +51,6 @@ PAYWALLED_DOMAINS = [
     "nytimes.com",
     "washingtonpost.com",
     "wsj.com",
-    "nationalgeographic.com",  # Often has subscription walls
     "newscientist.com",
     "scientificamerican.com",
     "theatlantic.com",
@@ -140,6 +139,8 @@ DOMAIN_URLS = {
         "https://www.nasa.gov/news/all-news/",
     ],
     "Wildlife": [
+        # National Geographic - world-class wildlife coverage
+        "https://www.nationalgeographic.com/animals",
         # BBC Wildlife - excellent nature content
         "https://www.bbc.com/news/science-environment-56837908",  # BBC Nature/Wildlife
         "https://www.bbc.com/news/science_and_environment",
@@ -1008,6 +1009,8 @@ def get_base_url(url):
         return "https://www.smithsonianmag.com"
     elif "nationalzoo.si.edu" in url:
         return "https://nationalzoo.si.edu"
+    elif "nationalgeographic.com" in url:
+        return "https://www.nationalgeographic.com"
     return ""
 
 
@@ -1037,6 +1040,8 @@ def get_source_name(url):
         return "Smithsonian"
     elif "nationalzoo.si.edu" in url:
         return "Smithsonian Zoo"
+    elif "nationalgeographic" in url:
+        return "Nat Geo"
     elif "sciencedaily" in url:
         return "ScienceDaily"
     elif "phys.org" in url:
@@ -1093,6 +1098,8 @@ def fetch_domain_articles(domain, urls):
                 article_elements = soup.select("article h2 a, h3 a, .headline a, .article-title a")
             elif "nationalzoo.si.edu" in url:
                 article_elements = soup.select("article h2 a, h3 a, .news-item a, .card a")
+            elif "nationalgeographic.com" in url:
+                article_elements = soup.select("article a, h2 a, h3 a, .PromoTile a, .GridPromoTile a, a[href*='/animals/']")
             elif "sciencedaily" in url:
                 article_elements = soup.select("#headlines a, .latest-head a, #featured a")
             elif "phys.org" in url:
@@ -1367,7 +1374,7 @@ def generate_html(domains_articles, featured_media=None):
         /* Card Grid Layout */
         .cards-grid {{
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 24px;
         }}
 
@@ -1748,12 +1755,6 @@ def generate_html(domains_articles, featured_media=None):
         }}
 
         /* Responsive Design */
-        @media (max-width: 1400px) {{
-            .cards-grid {{
-                grid-template-columns: repeat(2, 1fr);
-            }}
-        }}
-
         @media (max-width: 1200px) {{
             .featured-grid {{
                 grid-template-columns: 1fr;
@@ -1914,7 +1915,7 @@ def generate_html(domains_articles, featured_media=None):
             <div class="cards-grid">
 """
         if articles:
-            for article in articles[:4]:
+            for article in articles[:2]:
                 # Normalize all text to fix encoding issues
                 title = normalize_characters(article['title'])
                 explanation = normalize_characters(article.get('explanation', article['summary']))
@@ -1957,7 +1958,7 @@ def generate_html(domains_articles, featured_media=None):
     html += """
         <footer>
             <p>All articles from free, open access sources - no paywalls!</p>
-            <p class="sources-list">Quanta &bull; The Conversation &bull; Ars Technica &bull; Mongabay &bull; BBC &bull; Smithsonian &bull; ZME Science &bull; MIT News &bull; ScienceDaily &bull; NASA</p>
+            <p class="sources-list">Quanta &bull; The Conversation &bull; Ars Technica &bull; National Geographic &bull; BBC &bull; Smithsonian &bull; MIT News &bull; ScienceDaily &bull; NASA</p>
             <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
         </footer>
     </div>
@@ -1998,7 +1999,7 @@ def update_digest():
             print(f"    Generating simple explanations...")
             articles = enrich_with_explanations(articles[:5])  # Process a few extra in case some fail
 
-        domains_articles[domain] = articles[:4]  # Keep top 4
+        domains_articles[domain] = articles[:2]  # Keep top 2
 
     print("  Generating HTML...")
     html = generate_html(domains_articles, featured_media=featured_media)
