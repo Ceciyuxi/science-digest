@@ -2108,11 +2108,25 @@ def generate_html(domains_articles, featured_media=None):
             </div>
             <div class="stories-grid">
 """
+        # Helper to clean up titles
+        def clean_title(title):
+            # Fix missing spaces before capitals (e.g., "ZillowThe" -> "Zillow The")
+            title = re.sub(r'([a-z])([A-Z])', r'\1 \2', title)
+            # Remove author bylines (By Name, By Name Name)
+            title = re.sub(r'By\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)*\s*$', '', title).strip()
+            # Remove trailing punctuation from cleanup
+            title = re.sub(r'[.\s]+$', '', title)
+            # Truncate at reasonable length (shorter for card display)
+            if len(title) > 70:
+                # Try to cut at a word boundary
+                title = title[:70].rsplit(' ', 1)[0] + '...'
+            return title
+
         # Wildlife card
         if wildlife_articles:
             article = wildlife_articles[0]
             config = domain_config["Wildlife"]
-            title = normalize_characters(article['title'])
+            title = clean_title(normalize_characters(article['title']))
             explanation = normalize_characters(article.get('explanation', article['summary']))
             image_url = article.get('image')
 
@@ -2139,7 +2153,7 @@ def generate_html(domains_articles, featured_media=None):
         if climate_articles:
             article = climate_articles[0]
             config = domain_config["Climate"]
-            title = normalize_characters(article['title'])
+            title = clean_title(normalize_characters(article['title']))
             explanation = normalize_characters(article.get('explanation', article['summary']))
             image_url = article.get('image')
 
