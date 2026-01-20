@@ -461,70 +461,44 @@ def fix_spacing_and_grammar(text):
     # Fix camelCase-like concatenations (lowercase followed by uppercase)
     text = re.sub(r'([a-z])([A-Z][a-z]{2,})', r'\1 \2', text)
 
-    # Fix words ending in 's' stuck to next word (e.g., "gorillasleft" -> "gorillas left")
-    # Pattern: word ending in s followed by common verbs/words
-    text = re.sub(r'(\w{3,}s)(left|right|found|show|have|had|are|is|was|were|can|could|would|should|may|might|will|been|being|made|published|released|reported|discovered|revealed)\b', r'\1 \2', text, flags=re.IGNORECASE)
-
-    # Fix article "a" stuck to next word (e.g., "astatement" -> "a statement")
-    text = re.sub(r'\ba([bcdfghjklmnpqrstvwxyz][a-z]{2,})', r'a \1', text)
-
-    # Fix article "an" stuck to next word
-    text = re.sub(r'\ban([aeiou][a-z]{2,})', r'an \1', text)
-
-    # Fix "the" stuck to next word
-    text = re.sub(r'\bthe([a-z]{3,})', r'the \1', text)
-
-    # Fix "to" stuck to next word
-    text = re.sub(r'\bto([a-z]{3,})', r'to \1', text)
-
-    # Fix "of" stuck to next word
-    text = re.sub(r'\bof([a-z]{3,})', r'of \1', text)
-
-    # Fix "in" stuck to next word
-    text = re.sub(r'\bin([a-z]{3,})', r'in \1', text)
-
-    # Fix "on" stuck to next word
-    text = re.sub(r'\bon([a-z]{3,})', r'on \1', text)
-
-    # Fix "is" stuck to next word
-    text = re.sub(r'\bis([a-z]{3,})', r'is \1', text)
-
-    # Fix "as" stuck to next word
-    text = re.sub(r'\bas([a-z]{3,})', r'as \1', text)
-
-    # Fix "at" stuck to next word
-    text = re.sub(r'\bat([a-z]{3,})', r'at \1', text)
-
-    # Fix "by" stuck to next word
-    text = re.sub(r'\bby([a-z]{3,})', r'by \1', text)
-
-    # Fix "for" stuck to next word
-    text = re.sub(r'\bfor([a-z]{3,})', r'for \1', text)
-
-    # Fix "and" stuck to next word
-    text = re.sub(r'\band([a-z]{3,})', r'and \1', text)
-
-    # Fix "with" stuck to next word
-    text = re.sub(r'\bwith([a-z]{3,})', r'with \1', text)
-
-    # Fix "from" stuck to next word
-    text = re.sub(r'\bfrom([a-z]{3,})', r'from \1', text)
-
-    # Fix "that" stuck to next word
-    text = re.sub(r'\bthat([a-z]{3,})', r'that \1', text)
-
-    # Fix common word concatenations
-    common_fixes = [
-        (r'authorsdiscuss', 'authors discuss'),
-        (r'researchersfound', 'researchers found'),
-        (r'scientistsdiscovered', 'scientists discovered'),
-        (r'studyshows', 'study shows'),
-        (r'resultsshow', 'results show'),
-        (r'datashows', 'data shows'),
-        (r'findingsshow', 'findings show'),
-        (r'teamfound', 'team found'),
+    # Fix specific word concatenations (safe patterns that won't break real words)
+    # Format: pattern -> replacement
+    word_fixes = [
+        # Common verb concatenations
+        (r'\b(\w{3,}s)(published|released|reported|discovered|revealed|found|shows?|left|right)\b', r'\1 \2'),
+        # Article + word (only specific safe cases)
+        (r'\bastatement\b', 'a statement'),
+        (r'\banother\b', 'another'),  # Don't break this
+        (r'\babout\b', 'about'),  # Don't break this
+        # Preposition concatenations (specific patterns)
+        (r'\bofthe\b', 'of the'),
+        (r'\binthe\b', 'in the'),
+        (r'\btothe\b', 'to the'),
+        (r'\bforthe\b', 'for the'),
+        (r'\bandthe\b', 'and the'),
+        (r'\bonthe\b', 'on the'),
+        (r'\batthe\b', 'at the'),
+        (r'\bbythe\b', 'by the'),
+        (r'\bfromthe\b', 'from the'),
+        (r'\bwiththe\b', 'with the'),
+        (r'\bthatthe\b', 'that the'),
+        (r'\bisthe\b', 'is the'),
+        (r'\basthe\b', 'as the'),
+        (r'\bwasthe\b', 'was the'),
+        (r'\barethe\b', 'are the'),
+        (r'\bwerethe\b', 'were the'),
+        # Other common concatenations
+        (r'\bauthorsdiscuss', 'authors discuss'),
+        (r'\bresearchersfound', 'researchers found'),
+        (r'\bscientistsdiscovered', 'scientists discovered'),
+        (r'\bstudyshows', 'study shows'),
+        (r'\bresultsshow', 'results show'),
+        (r'\bdatashows', 'data shows'),
+        (r'\bfindingsshow', 'findings show'),
+        (r'\bteamfound', 'team found'),
+        (r'\baccordingto', 'according to'),
     ]
-    for pattern, replacement in common_fixes:
+    for pattern, replacement in word_fixes:
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
 
     # Fix "in" followed by scientific names (e.g., "inC. elegans" -> "in C. elegans")
@@ -2143,6 +2117,32 @@ def select_diverse_articles(articles, count=2):
     return selected[:count]
 
 
+def interleave_by_source(articles):
+    """Reorder articles to interleave different sources for diversity."""
+    if not articles or len(articles) <= 1:
+        return articles
+
+    # Group articles by source
+    by_source = {}
+    for article in articles:
+        source = article.get('source', 'Unknown')
+        if source not in by_source:
+            by_source[source] = []
+        by_source[source].append(article)
+
+    # Interleave: take one from each source in round-robin fashion
+    result = []
+    source_lists = list(by_source.values())
+    max_len = max(len(lst) for lst in source_lists)
+
+    for i in range(max_len):
+        for source_articles in source_lists:
+            if i < len(source_articles):
+                result.append(source_articles[i])
+
+    return result
+
+
 def update_digest():
     """Fetch articles and update the HTML page."""
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Updating Science Digest...")
@@ -2170,8 +2170,10 @@ def update_digest():
         print(f"    Found {len(articles)} free articles")
 
         if articles:
+            # Interleave by source BEFORE enrichment to ensure diversity
+            articles = interleave_by_source(articles)
             print(f"    Generating simple explanations...")
-            articles = enrich_with_explanations(articles[:5])  # Process a few extra in case some fail
+            articles = enrich_with_explanations(articles[:6])  # Process more to have options
 
         # Select 2 articles from different sources for variety
         domains_articles[domain] = select_diverse_articles(articles, count=2)
