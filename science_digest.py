@@ -2131,7 +2131,7 @@ def generate_html(domains_articles, featured_media=None):
             image_url = article.get('image')
             # Fallback wildlife image if none found
             if not image_url:
-                image_url = "https://images.unsplash.com/photo-1474511320723-9a56873571b7?w=800"
+                image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/24701-nature-702702.jpg/1280px-24701-nature-702702.jpg"
 
             desc_text = explanation.replace('<ul class="summary-bullets">', '').replace('</ul>', '')
             desc_text = re.sub(r'<li>(.*?)</li>', r'\1 ', desc_text).strip()
