@@ -451,6 +451,80 @@
             color: #5a6a8a;
         }
 
+        /* Stories Grid - Two tiles side by side */
+        .stories-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .story-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .story-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(100, 255, 218, 0.3);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+        }
+
+        .story-media {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .story-content {
+            padding: 20px;
+        }
+
+        .story-badge {
+            display: inline-block;
+            color: #1a1a2e;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.7em;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .story-category {
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            color: #a8b2d1;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.7em;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-left: 8px;
+            margin-bottom: 8px;
+        }
+
+        .story-title {
+            font-size: 1.15em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .story-description {
+            font-size: 0.85em;
+            color: #a8b2d1;
+            line-height: 1.6;
+        }
+
         .natgeo-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -572,6 +646,14 @@
             .nasa-media {
                 height: 220px;
             }
+
+            .stories-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .story-media {
+                height: 180px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -607,68 +689,36 @@
         <header>
             <h1>SCIENCE DIGEST</h1>
             <p class="subtitle">Your Daily Science News, Made Simple</p>
-            <p class="date">Tuesday, January 20, 2026 &bull; Updated at 03:18 PM MT</p>
+            <p class="date">Tuesday, January 20, 2026 &bull; Updated at 03:24 PM MT</p>
             <span class="free-badge">100% Free &amp; Open Access Sources</span>
         </header>
 
         <section class="featured-section">
             <div class="featured-header">
-                <div class="featured-icon">&#128248;</div>
+                <div class="featured-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d);">&#127757;</div>
                 <div class="featured-title-group">
-                    <h2>Featured Media</h2>
-                    <span class="featured-desc">NASA Astronomy Picture of the Day</span>
+                    <h2>Today's Stories</h2>
+                    <span class="featured-desc">Wildlife & Climate News</span>
                 </div>
             </div>
-            <div class="featured-grid">
-                <div class="nasa-card">
-                    <img class="nasa-media" src="https://apod.nasa.gov/apod/image/2601/iotruecolor_galileo_2796.jpg" alt="Io in True Color" loading="lazy">
-                    <div class="nasa-content">
-                        <span class="nasa-badge">NASA Picture of the Day</span>
-                        <h3 class="nasa-title">Io in True Color</h3>
-                        <p class="nasa-description">The strangest moon in the Solar System is bright yellow.  The featured picture, an attempt to show how Io would appear in the "true colors" perceptible to the average human eye, was taken in 1999 July by the Galileo spacecraft that orbited Jupiter from 1995 to 2003.  Io's colors derive from sulfur a...</p>
-                        <p class="nasa-credit">Credit: NASA</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="featured-section">
-            <div class="featured-header">
-                <div class="featured-icon" style="background: linear-gradient(135deg, #f57c00, #ffb300);">&#129421;</div>
-                <div class="featured-title-group">
-                    <h2>Wildlife</h2>
-                    <span class="featured-desc">Animals & Nature</span>
-                </div>
-            </div>
-            <div class="featured-grid">
-                <a href="https://www.nationalgeographic.com/animals/article/humpback-songs-archival-save-the-whales-ceti-roger-payne" class="nasa-card" target="_blank" style="text-decoration: none; color: inherit;">
-                    <img class="nasa-media" src="https://i.natgeofe.com/n/3e477f04-6b2b-49c4-8a3f-fd917907ac28/SPI-102591_16x9.jpg?w=1200" alt="These unearthly whale songs helped save humpbacks from extinction" loading="lazy" onerror="this.style.display='none'">
-                    <div class="nasa-content">
-                        <span class="nasa-badge" style="background: linear-gradient(135deg, #f57c00, #ffb300);">Nat Geo</span>
-                        <h3 class="nasa-title">These unearthly whale songs helped save humpbacks from extinction</h3>
-                        <p class="nasa-description">We were too far from land toreturnthat evening; my wife, Katy, and I would have to spend the night at sea. 
+            <div class="stories-grid">
+                <a href="https://www.nationalgeographic.com/animals/article/humpback-songs-archival-save-the-whales-ceti-roger-payne" class="story-card" target="_blank">
+                    <img class="story-media" src="https://i.natgeofe.com/n/3e477f04-6b2b-49c4-8a3f-fd917907ac28/SPI-102591_16x9.jpg?w=1200" alt="These unearthly whale songs helped save humpbacks from extinction" loading="lazy" onerror="this.style.display='none'">
+                    <div class="story-content">
+                        <span class="story-badge" style="background: linear-gradient(135deg, #f57c00, #ffb300);">Nat Geo</span>
+                        <span class="story-category">Wildlife</span>
+                        <h3 class="story-title">These unearthly whale songs helped save humpbacks from extinction</h3>
+                        <p class="story-description">We were too far from land toreturnthat evening; my wife, Katy, and I would have to spend the night at sea. 
 Bermuda's treacherous reefs are difficult enough to navigate in broad daylight.</p>
                     </div>
                 </a>
-            </div>
-        </section>
-
-        <section class="featured-section">
-            <div class="featured-header">
-                <div class="featured-icon" style="background: linear-gradient(135deg, #0575e6, #00d4ff);">&#127758;</div>
-                <div class="featured-title-group">
-                    <h2>Climate</h2>
-                    <span class="featured-desc">Weather & Environment</span>
-                </div>
-            </div>
-            <div class="featured-grid">
-                <a href="https://insideclimatenews.org/category/justice/" class="nasa-card" target="_blank" style="text-decoration: none; color: inherit;">
-                    <img class="nasa-media" src="https://insideclimatenews.org/data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20900%20600'%3E%3C/svg%3E" alt="Justice & Health" loading="lazy" onerror="this.style.display='none'">
-                    <div class="nasa-content">
-                        <span class="nasa-badge" style="background: linear-gradient(135deg, #0575e6, #00d4ff);">Inside Climate News</span>
-                        <h3 class="nasa-title">Justice & Health</h3>
-                        <p class="nasa-description">Decades of water depletion, dam building and repression of scientists and environmentalists have driven Iran toward ecological crises that are fueling protests rocking the country. 
-Every day or once a week, our original stories and digest of the web's top headlines deliver the full story, for free.</p>
+                <a href="https://insideclimatenews.org/news/20012026/climate-expert-works-to-restore-zillow-climate-risk-scores/" class="story-card" target="_blank">
+                    <img class="story-media" src="https://insideclimatenews.org/wp-content/uploads/2026/01/GettyImages-2253955164-1024x683.jpg" alt="A California Climate Expert Is Working to Restore Climate Risk Scores Deleted by ZillowThe real estate website scrubbed the data under pressure from California&#39;s real estate brokers and agents who were concerned about its impact on home prices. Neil Matouka thinks prospective buyers have a right to know.By Claire Barber" loading="lazy" onerror="this.style.display='none'">
+                    <div class="story-content">
+                        <span class="story-badge" style="background: linear-gradient(135deg, #0575e6, #00d4ff);">Inside Climate News</span>
+                        <span class="story-category">Climate</span>
+                        <h3 class="story-title">A California Climate Expert Is Working to Restore Climate Risk Scores Deleted by ZillowThe real estate website scrubbed the data under pressure from California&#39;s real estate brokers and agents who were concerned about its impact on home prices. Neil Matouka thinks prospective buyers have a right to know.By Claire Barber</h3>
+                        <p class="story-description">Zillow removed the feature displaying climate risk data to home buyers in November after the California Regional Multiple Listing Service, which provides a database of real estate listings to real estate agents and brokers in the state, questioned th...</p>
                     </div>
                 </a>
             </div>

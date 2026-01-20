@@ -1174,7 +1174,8 @@ def fetch_domain_articles(domain, urls):
             elif "nationalgeographic.com" in url:
                 article_elements = soup.select("article a, h2 a, h3 a, .PromoTile a, .GridPromoTile a, a[href*='/animals/']")
             elif "insideclimatenews.org" in url:
-                article_elements = soup.select("article h2 a, h3 a, .post-title a, .entry-title a, article a[href*='/news/']")
+                # Select links to actual news articles (exclude category links)
+                article_elements = soup.select("article h2 a, article h3 a, .entry-title a, a[href*='/news/2'], a[href*='/2026/'], a[href*='/2025/']")
             elif "sciencedaily" in url:
                 article_elements = soup.select("#headlines a, .latest-head a, #featured a")
             elif "phys.org" in url:
@@ -1210,6 +1211,10 @@ def fetch_domain_articles(domain, urls):
                     skip_words = ["subscribe", "newsletter", "sign in", "menu", "search",
                                   "advertisement", "about us", "contact", "privacy"]
                     if any(skip in headline.lower() for skip in skip_words):
+                        continue
+
+                    # Skip category/tag pages (not actual articles)
+                    if href and ("/category/" in href or "/tag/" in href or "/topics/" in href):
                         continue
 
                     # Build full URL
@@ -1795,6 +1800,80 @@ def generate_html(domains_articles, featured_media=None):
             color: #5a6a8a;
         }}
 
+        /* Stories Grid - Two tiles side by side */
+        .stories-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }}
+
+        .story-card {{
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }}
+
+        .story-card:hover {{
+            transform: translateY(-6px);
+            border-color: rgba(100, 255, 218, 0.3);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+        }}
+
+        .story-media {{
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }}
+
+        .story-content {{
+            padding: 20px;
+        }}
+
+        .story-badge {{
+            display: inline-block;
+            color: #1a1a2e;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.7em;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }}
+
+        .story-category {{
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            color: #a8b2d1;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.7em;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-left: 8px;
+            margin-bottom: 8px;
+        }}
+
+        .story-title {{
+            font-size: 1.15em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }}
+
+        .story-description {{
+            font-size: 0.85em;
+            color: #a8b2d1;
+            line-height: 1.6;
+        }}
+
         .natgeo-grid {{
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -1916,6 +1995,14 @@ def generate_html(domains_articles, featured_media=None):
             .nasa-media {{
                 height: 220px;
             }}
+
+            .stories-grid {{
+                grid-template-columns: 1fr;
+            }}
+
+            .story-media {{
+                height: 180px;
+            }}
         }}
 
         @media (max-width: 480px) {{
@@ -1997,46 +2084,77 @@ def generate_html(domains_articles, featured_media=None):
         </section>
 """
 
-    # Generate featured cards for Wildlife and Climate (like NASA APOD)
-    for domain in ["Wildlife", "Climate"]:
-        articles = domains_articles.get(domain, [])
-        config = domain_config[domain]
+    # Generate Wildlife and Climate as two tiles in the same row
+    wildlife_articles = domains_articles.get("Wildlife", [])
+    climate_articles = domains_articles.get("Climate", [])
 
-        if articles:
-            article = articles[0]  # Just one article per section
+    if wildlife_articles or climate_articles:
+        html += """
+        <section class="featured-section">
+            <div class="featured-header">
+                <div class="featured-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d);">&#127757;</div>
+                <div class="featured-title-group">
+                    <h2>Today's Stories</h2>
+                    <span class="featured-desc">Wildlife & Climate News</span>
+                </div>
+            </div>
+            <div class="stories-grid">
+"""
+        # Wildlife card
+        if wildlife_articles:
+            article = wildlife_articles[0]
+            config = domain_config["Wildlife"]
             title = normalize_characters(article['title'])
             explanation = normalize_characters(article.get('explanation', article['summary']))
             image_url = article.get('image')
 
-            # Extract plain text from bullet HTML for description
             desc_text = explanation.replace('<ul class="summary-bullets">', '').replace('</ul>', '')
             desc_text = re.sub(r'<li>(.*?)</li>', r'\1 ', desc_text).strip()
-            # Limit description length
-            if len(desc_text) > 350:
-                desc_text = desc_text[:350] + "..."
+            if len(desc_text) > 250:
+                desc_text = desc_text[:250] + "..."
 
-            html += f"""
-        <section class="featured-section">
-            <div class="featured-header">
-                <div class="featured-icon" style="background: linear-gradient(135deg, {config['color1']}, {config['color2']});">{config['icon']}</div>
-                <div class="featured-title-group">
-                    <h2>{domain}</h2>
-                    <span class="featured-desc">{config['desc']}</span>
-                </div>
-            </div>
-            <div class="featured-grid">
-                <a href="{article['url']}" class="nasa-card" target="_blank" style="text-decoration: none; color: inherit;">
+            html += f"""                <a href="{article['url']}" class="story-card" target="_blank">
 """
             if image_url:
-                html += f"""                    <img class="nasa-media" src="{image_url}" alt="{title}" loading="lazy" onerror="this.style.display='none'">
+                html += f"""                    <img class="story-media" src="{image_url}" alt="{title}" loading="lazy" onerror="this.style.display='none'">
 """
-            html += f"""                    <div class="nasa-content">
-                        <span class="nasa-badge" style="background: linear-gradient(135deg, {config['color1']}, {config['color2']});">{article['source']}</span>
-                        <h3 class="nasa-title">{title}</h3>
-                        <p class="nasa-description">{desc_text}</p>
+            html += f"""                    <div class="story-content">
+                        <span class="story-badge" style="background: linear-gradient(135deg, {config['color1']}, {config['color2']});">{article['source']}</span>
+                        <span class="story-category">Wildlife</span>
+                        <h3 class="story-title">{title}</h3>
+                        <p class="story-description">{desc_text}</p>
                     </div>
                 </a>
-            </div>
+"""
+
+        # Climate card
+        if climate_articles:
+            article = climate_articles[0]
+            config = domain_config["Climate"]
+            title = normalize_characters(article['title'])
+            explanation = normalize_characters(article.get('explanation', article['summary']))
+            image_url = article.get('image')
+
+            desc_text = explanation.replace('<ul class="summary-bullets">', '').replace('</ul>', '')
+            desc_text = re.sub(r'<li>(.*?)</li>', r'\1 ', desc_text).strip()
+            if len(desc_text) > 250:
+                desc_text = desc_text[:250] + "..."
+
+            html += f"""                <a href="{article['url']}" class="story-card" target="_blank">
+"""
+            if image_url:
+                html += f"""                    <img class="story-media" src="{image_url}" alt="{title}" loading="lazy" onerror="this.style.display='none'">
+"""
+            html += f"""                    <div class="story-content">
+                        <span class="story-badge" style="background: linear-gradient(135deg, {config['color1']}, {config['color2']});">{article['source']}</span>
+                        <span class="story-category">Climate</span>
+                        <h3 class="story-title">{title}</h3>
+                        <p class="story-description">{desc_text}</p>
+                    </div>
+                </a>
+"""
+
+        html += """            </div>
         </section>
 """
 
