@@ -147,7 +147,15 @@ def fetch_nasa_apod():
         }
     except Exception as e:
         print(f"    Warning: Could not fetch NASA APOD: {e}")
-        return None
+        # Return a fallback NASA image when API is rate limited
+        print("    Using fallback NASA image...")
+        return {
+            "title": "The Milky Way Over Monument Valley",
+            "explanation": "The Milky Way arches over the iconic buttes of Monument Valley in this stunning night sky view. Our galaxy contains over 200 billion stars, and on clear nights away from light pollution, we can see the band of light created by billions of distant stars in our galactic disk.",
+            "url": "https://apod.nasa.gov/apod/image/2401/MwskyMV_Schweitzer_1080.jpg",
+            "media_type": "image",
+            "copyright": "NASA/APOD"
+        }
 
 
 def fetch_nature_feeds():
