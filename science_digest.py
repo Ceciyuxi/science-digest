@@ -414,10 +414,107 @@ def normalize_characters(text):
     return text
 
 
+def fix_spacing_and_grammar(text):
+    """Fix common spacing issues and remove UI artifacts from scraped text."""
+    if not text:
+        return text
+
+    # Remove common UI navigation text that gets scraped
+    ui_patterns = [
+        r'Previous\s*image\s*Next\s*image',
+        r'Next\s*image\s*Previous\s*image',
+        r'Previous\s*image',
+        r'Next\s*image',
+        r'Share\s*on\s*(Facebook|Twitter|LinkedIn|Email)',
+        r'Share\s*this\s*article',
+        r'Read\s*more:?',
+        r'See\s*also:?',
+        r'Related:?',
+        r'Advertisement',
+        r'Sponsored\s*content',
+        r'Click\s*to\s*expand',
+        r'Show\s*caption',
+        r'Hide\s*caption',
+        r'Image\s*\d+\s*of\s*\d+',
+        r'Photo\s*by:?',
+        r'Credit:',
+        r'Photograph:',
+        r'\[.*?\]',  # Remove bracketed text like [Image], [Video]
+    ]
+    for pattern in ui_patterns:
+        text = re.sub(pattern, ' ', text, flags=re.IGNORECASE)
+
+    # Fix missing space after periods before capital letters
+    # e.g., "elegans.The" -> "elegans. The"
+    text = re.sub(r'\.([A-Z])', r'. \1', text)
+
+    # Fix missing space after other punctuation before capital letters
+    text = re.sub(r',([A-Z])', r', \1', text)
+    text = re.sub(r':([A-Z])', r': \1', text)
+    text = re.sub(r';([A-Z])', r'; \1', text)
+
+    # Fix camelCase-like concatenations (lowercase followed by uppercase)
+    # e.g., "calledCaenorhabditis" -> "called Caenorhabditis"
+    # But be careful not to break acronyms or intentional camelCase
+    text = re.sub(r'([a-z])([A-Z][a-z]{2,})', r'\1 \2', text)
+
+    # Fix common word concatenations
+    common_fixes = [
+        (r'authorsdiscuss', 'authors discuss'),
+        (r'researchersfound', 'researchers found'),
+        (r'scientistsdiscovered', 'scientists discovered'),
+        (r'studyshows', 'study shows'),
+        (r'resultsshow', 'results show'),
+        (r'datashows', 'data shows'),
+        (r'findingsshow', 'findings show'),
+        (r'teamfound', 'team found'),
+        (r'thestudy', 'the study'),
+        (r'ofthe', 'of the'),
+        (r'inthe', 'in the'),
+        (r'tothe', 'to the'),
+        (r'forthe', 'for the'),
+        (r'andthe', 'and the'),
+        (r'thatthe', 'that the'),
+        (r'withthe', 'with the'),
+        (r'fromthe', 'from the'),
+        (r'onthe', 'on the'),
+        (r'bythe', 'by the'),
+        (r'isthe', 'is the'),
+        (r'asthe', 'as the'),
+        (r'atthe', 'at the'),
+    ]
+    for pattern, replacement in common_fixes:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+    # Fix "in" followed by scientific names (e.g., "inC. elegans" -> "in C. elegans")
+    text = re.sub(r'\bin([A-Z]\.)', r'in \1', text)
+
+    # Fix spacing around hyphens that got lost
+    text = re.sub(r'(\w)-([A-Z])', r'\1 - \2', text)
+
+    # Clean up multiple spaces
+    text = re.sub(r'\s+', ' ', text)
+
+    # Clean up spaces before punctuation
+    text = re.sub(r'\s+([.,;:!?])', r'\1', text)
+
+    # Ensure space after punctuation (except for abbreviations like "Dr." or "U.S.")
+    text = re.sub(r'([.,;:!?])([A-Za-z])', r'\1 \2', text)
+
+    # Fix double punctuation
+    text = re.sub(r'\.{2,}', '.', text)
+    text = re.sub(r',{2,}', ',', text)
+
+    return text.strip()
+
+
 def simplify_text(text):
     """Simplify text to approximately 7th grade reading level."""
     # First normalize special characters
     text = normalize_characters(text)
+
+    # Fix spacing issues and remove UI artifacts
+    text = fix_spacing_and_grammar(text)
 
     # Remove complex punctuation and clean up
     text = re.sub(r'\s+', ' ', text).strip()
@@ -526,6 +623,9 @@ def fetch_article_content(url):
             # Filter out very short paragraphs (likely navigation/ads)
             good_paragraphs = [p for p in paragraphs if len(p.get_text(strip=True)) > 50]
             content = " ".join(p.get_text(strip=True) for p in good_paragraphs[:8])
+
+        # Clean up spacing issues from scraped content
+        content = fix_spacing_and_grammar(content)
 
         return {"content": content[:2500], "image": image_url}
 
@@ -960,9 +1060,11 @@ def generate_simple_explanation(title, summary, full_content=""):
         else:
             bullet_points.append("Scientists made new discoveries in this field of research.")
 
-    # Build HTML bullet list
+    # Build HTML bullet list with final spacing cleanup
     html_parts = ['<ul class="summary-bullets">']
     for point in bullet_points[:3]:
+        # Apply final spacing fix to catch any remaining issues
+        point = fix_spacing_and_grammar(point)
         html_parts.append(f'<li>{point}</li>')
     html_parts.append('</ul>')
 
