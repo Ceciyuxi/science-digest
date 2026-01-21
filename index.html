@@ -394,6 +394,16 @@
             border-radius: 20px;
             overflow: hidden;
             transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            cursor: pointer;
+            -webkit-tap-highlight-color: rgba(255, 107, 107, 0.3);
+            touch-action: manipulation;
+        }
+
+        .nasa-card * {
+            pointer-events: none;
         }
 
         .nasa-card:hover {
@@ -467,6 +477,13 @@
             text-decoration: none;
             color: inherit;
             display: block;
+            cursor: pointer;
+            -webkit-tap-highlight-color: rgba(100, 255, 218, 0.3);
+            touch-action: manipulation;
+        }
+
+        .story-card * {
+            pointer-events: none;
         }
 
         .story-card:hover {
@@ -689,7 +706,7 @@
         <header>
             <h1>SCIENCE DIGEST</h1>
             <p class="subtitle">Your Daily Science News, Made Simple</p>
-            <p class="date">Wednesday, January 21, 2026 &bull; Updated at 02:02 PM MT</p>
+            <p class="date">Wednesday, January 21, 2026 &bull; Updated at 02:14 PM MT</p>
             <span class="free-badge">100% Free &amp; Open Access Sources</span>
         </header>
 
@@ -697,12 +714,11 @@
             <div class="featured-header">
                 <div class="featured-icon">&#128248;</div>
                 <div class="featured-title-group">
-                    <h2>Featured Media</h2>
-                    <span class="featured-desc">NASA Astronomy Picture of the Day</span>
+                    <h2>NASA Astronomy Picture of the Day</h2>
                 </div>
             </div>
             <div class="featured-grid">
-                <div class="nasa-card">
+                <a href="https://apod.nasa.gov/apod/astropix.html" class="nasa-card" target="_blank">
                     <img class="nasa-media" src="https://apod.nasa.gov/apod/image/2601/JWSTMIRI_ngc1365.png" alt="Barred Spiral Galaxy NGC 1365 from Webb" loading="lazy">
                     <div class="nasa-content">
                         <span class="nasa-badge">NASA Picture of the Day</span>
@@ -710,7 +726,7 @@
                         <p class="nasa-description">A mere 56 million light-years distant toward the southern constellation Fornax, NGC 1365 is an enormous barred spiral galaxy about 200,000 light-years in diameter. That's twice the size of our own barred spiral Milky Way. This sharp image from the James Webb Space Telescope's Mid-Infrared Instrument...</p>
                         <p class="nasa-credit">Credit: NASA</p>
                     </div>
-                </div>
+                </a>
             </div>
         </section>
 
@@ -718,19 +734,18 @@
             <div class="featured-header">
                 <div class="featured-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d);">&#127757;</div>
                 <div class="featured-title-group">
-                    <h2>Today's Stories</h2>
-                    <span class="featured-desc">Wildlife & Climate News</span>
+                    <h2>Wildlife & Climate News</h2>
                 </div>
             </div>
             <div class="stories-grid">
-                <a href="https://www.nationalgeographic.com/animals/article/map-turtles-canada-deaths-investigation" class="story-card" target="_blank">
-                    <img class="story-media" src="https://i.natgeofe.com/n/05ad93c9-6cd3-42b3-b85d-8337e5d05008/Ice_Turtles_National_Geographic_42_16x9.jpg?w=1200" alt="What scientists learned from a mysterious surge in Canadian turtle..." loading="lazy" onerror="this.style.display='none'">
+                <a href="https://news.mongabay.com/2026/01/study-tracks-fishing-boats-to-see-how-heat-waves-affect-fish-distribution/" class="story-card" target="_blank">
+                    <img class="story-media" src="https://imgs.mongabay.com/wp-content/uploads/sites/20/2026/01/13153037/4-scaled.jpg" alt="Study tracks fishing boats to see how heat waves affect fish..." loading="lazy" onerror="this.style.display='none'">
                     <div class="story-content">
-                        <span class="story-badge" style="background: linear-gradient(135deg, #f57c00, #ffb300);">Nat Geo</span>
+                        <span class="story-badge" style="background: linear-gradient(135deg, #f57c00, #ffb300);">Mongabay</span>
                         <span class="story-category">Wildlife</span>
-                        <h3 class="story-title">What scientists learned from a mysterious surge in Canadian turtle...</h3>
-                        <p class="story-description">Soon, he was filling bins with them. he says. This was the first and, so far, the only time Bulté had ever seen a mass mortality event in this population of map turtles, a species found in the midwestern region of North America. 
-Bulté, an associate ...</p>
+                        <h3 class="story-title">Study tracks fishing boats to see how heat waves affect fish...</h3>
+                        <p class="story-description">The study, published Dec. 22, 2025, found that tracking data could provide early detection of extreme northward and inshore shifts in albacore tuna (Thunnus alalunga) and Pacific bluefin tuna (T. orientalis) distribution in response to heat waves. 
+T...</p>
                     </div>
                 </a>
                 <a href="https://insideclimatenews.org/news/21012026/half-of-fossil-fuel-carbon-emissions-in-2024-came-from-32-companies/" class="story-card" target="_blank">
@@ -748,7 +763,7 @@ It is the only database of its kind tracking cor...</p>
 
         <footer>
             <p>All articles from free, open access sources - no paywalls!</p>
-            <p class="sources-list">NASA &bull; National Geographic &bull; Inside Climate News</p>
+            <p class="sources-list">NASA &bull; Mongabay &bull; Inside Climate News</p>
             <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
         </footer>
     </div>
