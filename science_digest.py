@@ -119,8 +119,10 @@ DOMAIN_KEYWORDS = {
 # These sources provide full articles without paywalls
 DOMAIN_URLS = {
     "Wildlife": [
-        # National Geographic Animals - world-class wildlife coverage with images
-        "https://www.nationalgeographic.com/animals",
+        # Mongabay Oceans - free, excellent marine/ocean wildlife coverage
+        "https://news.mongabay.com/list/oceans/",
+        # National Geographic Animals - free wildlife content
+        "https://www.nationalgeographic.com/animals/",
     ],
     "Climate": [
         # Inside Climate News - dedicated climate journalism
@@ -451,6 +453,15 @@ def fix_spacing_and_grammar(text):
         (r'\bfindingsshow', 'findings show'),
         (r'\bteamfound', 'team found'),
         (r'\baccordingto', 'according to'),
+        # Common article concatenations
+        (r'\bThestudy\b', 'The study'),
+        (r'\bTheteam\b', 'The team'),
+        (r'\bTheresearch\b', 'The research'),
+        (r'\bThefindings\b', 'The findings'),
+        (r'\bTheresults\b', 'The results'),
+        (r'\bThedata\b', 'The data'),
+        (r'\bAstudy\b', 'A study'),
+        (r'\bAnew\b', 'A new'),
     ]
     for pattern, replacement in word_fixes:
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
@@ -1174,7 +1185,10 @@ def fetch_domain_articles(domain, urls):
             elif "iflscience" in url:
                 article_elements = soup.select("article a, h2 a, h3 a, .card a, .article-title a")
             elif "mongabay" in url:
-                article_elements = soup.select("article h2 a, .post-title a, h3 a, .entry-title a")
+                # Mongabay uses data-wpel-link attribute for article links
+                # Find all links and filter manually for better compatibility
+                all_links = soup.find_all("a", href=True)
+                article_elements = [a for a in all_links if "mongabay.com/20" in a.get("href", "") and "/list/" not in a.get("href", "")]
             elif "bbc.com" in url:
                 article_elements = soup.select("article h2 a, h3 a, .media__link, a.gs-c-promo-heading")
             elif "zmescience" in url:
@@ -1757,6 +1771,16 @@ def generate_html(domains_articles, featured_media=None):
             border-radius: 20px;
             overflow: hidden;
             transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            cursor: pointer;
+            -webkit-tap-highlight-color: rgba(255, 107, 107, 0.3);
+            touch-action: manipulation;
+        }}
+
+        .nasa-card * {{
+            pointer-events: none;
         }}
 
         .nasa-card:hover {{
@@ -1830,6 +1854,13 @@ def generate_html(domains_articles, featured_media=None):
             text-decoration: none;
             color: inherit;
             display: block;
+            cursor: pointer;
+            -webkit-tap-highlight-color: rgba(100, 255, 218, 0.3);
+            touch-action: manipulation;
+        }}
+
+        .story-card * {{
+            pointer-events: none;
         }}
 
         .story-card:hover {{
@@ -2067,8 +2098,7 @@ def generate_html(domains_articles, featured_media=None):
             <div class="featured-header">
                 <div class="featured-icon">&#128248;</div>
                 <div class="featured-title-group">
-                    <h2>Featured Media</h2>
-                    <span class="featured-desc">NASA Astronomy Picture of the Day</span>
+                    <h2>NASA Astronomy Picture of the Day</h2>
                 </div>
             </div>
             <div class="featured-grid">
@@ -2083,7 +2113,9 @@ def generate_html(domains_articles, featured_media=None):
             else:
                 media_html = f'<img class="nasa-media" src="{nasa["url"]}" alt="{nasa_title}" loading="lazy">'
 
-            html += f"""                <div class="nasa-card">
+            # Link to APOD page
+            apod_link = "https://apod.nasa.gov/apod/astropix.html"
+            html += f"""                <a href="{apod_link}" class="nasa-card" target="_blank">
                     {media_html}
                     <div class="nasa-content">
                         <span class="nasa-badge">NASA Picture of the Day</span>
@@ -2091,7 +2123,7 @@ def generate_html(domains_articles, featured_media=None):
                         <p class="nasa-description">{nasa_desc}</p>
                         <p class="nasa-credit">Credit: {nasa.get("copyright", "NASA")}</p>
                     </div>
-                </div>
+                </a>
 """
 
         html += """            </div>
@@ -2108,8 +2140,7 @@ def generate_html(domains_articles, featured_media=None):
             <div class="featured-header">
                 <div class="featured-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d);">&#127757;</div>
                 <div class="featured-title-group">
-                    <h2>Today's Stories</h2>
-                    <span class="featured-desc">Wildlife & Climate News</span>
+                    <h2>Wildlife & Climate News</h2>
                 </div>
             </div>
             <div class="stories-grid">
@@ -2195,7 +2226,7 @@ def generate_html(domains_articles, featured_media=None):
     html += """
         <footer>
             <p>All articles from free, open access sources - no paywalls!</p>
-            <p class="sources-list">NASA &bull; National Geographic &bull; Inside Climate News</p>
+            <p class="sources-list">NASA &bull; Mongabay &bull; Inside Climate News</p>
             <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
         </footer>
     </div>
